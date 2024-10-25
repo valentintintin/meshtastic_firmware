@@ -39,6 +39,7 @@
 #include "Sensor/T1000xSensor.h"
 #include "Sensor/TSL2591Sensor.h"
 #include "Sensor/VEML7700Sensor.h"
+#include "Sensor/MySlaveSensors/MySlaveEnvironmentSensor.h"
 
 BMP085Sensor bmp085Sensor;
 BMP280Sensor bmp280Sensor;
@@ -62,6 +63,7 @@ BMP3XXSensor bmp3xxSensor;
 T1000xSensor t1000xSensor;
 #endif
 CGRadSensSensor cgRadSens;
+MySlaveEnvironmentSensor mySlaveEnvironmentSensor;
 
 #define FAILED_STATE_SENSOR_READ_MULTIPLIER 10
 #define DISPLAY_RECEIVEID_MEASUREMENTS_ON_SCREEN true
@@ -151,6 +153,8 @@ int32_t EnvironmentTelemetryModule::runOnce()
                 result = max17048Sensor.runOnce();
             if (cgRadSens.hasSensor())
                 result = cgRadSens.runOnce();
+            if (mySlavePowerSensor.hasSensor())
+                result = mySlavePowerSensor.runOnce();
 #endif
         }
         return result;

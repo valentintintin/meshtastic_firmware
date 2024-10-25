@@ -75,6 +75,7 @@ static const uint8_t ext_chrg_detect_value = EXT_CHRG_DETECT_VALUE;
 INA260Sensor ina260Sensor;
 INA219Sensor ina219Sensor;
 INA3221Sensor ina3221Sensor;
+MySlavePowerSensor mySlavePowerSensor;
 #endif
 
 #if !MESHTASTIC_EXCLUDE_I2C && !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
@@ -253,6 +254,10 @@ class AnalogBatteryLevel : public HasBatteryLevel
         if (hasINA()) {
             return getINAVoltage();
         }
+
+        if (mySlavePowerSensor.isInitialized() || mySlavePowerSensor.runOnce() > 0) {
+            return mySlavePowerSensor.getBusVoltageMv();
+        }
 #endif
 
 #ifndef ADC_MULTIPLIER
@@ -305,6 +310,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
         }
         return last_read_value;
 #endif // BATTERY_PIN
+
         return 0;
     }
 
