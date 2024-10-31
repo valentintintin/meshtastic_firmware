@@ -572,6 +572,7 @@ void setup()
     LOG_DEBUG("acc_info = %i", acc_info.type);
 #endif
 
+    scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::MY_SLAVE_SENSOR, meshtastic_TelemetrySensorType_SENSOR_UNSET);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BME_680, meshtastic_TelemetrySensorType_BME680);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BME_280, meshtastic_TelemetrySensorType_BME280);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BMP_280, meshtastic_TelemetrySensorType_BMP280);

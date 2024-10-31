@@ -407,6 +407,10 @@ bool EnvironmentTelemetryModule::getEnvironmentTelemetry(meshtastic_Telemetry *m
         valid = valid && max17048Sensor.getMetrics(m);
         hasSensor = true;
     }
+    if (mySlaveEnvironmentSensor.hasSensor()) {
+        valid = valid && mySlaveEnvironmentSensor.getMetrics(m);
+        hasSensor = true;
+    }
     if (cgRadSens.hasSensor()) {
         valid = valid && cgRadSens.getMetrics(m);
         hasSensor = true;
@@ -605,6 +609,11 @@ AdminMessageHandleResult EnvironmentTelemetryModule::handleAdminMessageForModule
     }
     if (max17048Sensor.hasSensor()) {
         result = max17048Sensor.handleAdminMessage(mp, request, response);
+        if (result != AdminMessageHandleResult::NOT_HANDLED)
+            return result;
+    }
+    if (mySlaveEnvironmentSensor.hasSensor()) {
+        result = mySlaveEnvironmentSensor.handleAdminMessage(mp, request, response);
         if (result != AdminMessageHandleResult::NOT_HANDLED)
             return result;
     }

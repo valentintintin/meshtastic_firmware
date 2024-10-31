@@ -64,7 +64,8 @@ class ScanI2C
         MAX30102,
         TPS65233,
         MPR121KB,
-        CGRADSENS
+        CGRADSENS,
+        MY_SLAVE_SENSOR
     } DeviceType;
 
     // typedef uint8_t DeviceAddress;

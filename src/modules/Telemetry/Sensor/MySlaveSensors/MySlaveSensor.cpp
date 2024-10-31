@@ -14,12 +14,11 @@ int32_t MySlaveSensor::runOnce()
 
     uint8_t ping = getData(REG_PING);
 
-    LOG_DEBUG("MySlaveSensor status : %d", ping);
-
     status = ping > 0;
+    hasPower = (ping & HAS_POWER) == HAS_POWER;
+    hasEnvironment = (ping & HAS_ENVIRONMENT) == HAS_ENVIRONMENT;
 
-    hasPower = (status & HAS_POWER) > 0;
-    hasWeather = (status & HAS_WEATHER) > 0;
+    LOG_DEBUG("MySlaveSensor status: %d. hasPower: %d, hasEnvironment: %d", ping, hasPower, hasEnvironment);
 
     return initI2CSensor();
 }
@@ -28,17 +27,15 @@ bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
 {
     switch (measurement->which_variant) {
         case meshtastic_Telemetry_environment_metrics_tag:
-            measurement->variant.environment_metrics.has_temperature = hasWeather;
-            measurement->variant.environment_metrics.has_relative_humidity = hasWeather;
-            measurement->variant.environment_metrics.has_barometric_pressure = hasWeather;
+            measurement->variant.environment_metrics.has_temperature = hasEnvironment;
+            measurement->variant.environment_metrics.has_relative_humidity = hasEnvironment;
+            measurement->variant.environment_metrics.has_barometric_pressure = hasEnvironment;
 
-            LOG_DEBUG("MySlaveSensor::getMetrics");
-
-            if (hasWeather) {
-                LOG_DEBUG("MySlaveSensor::getWeather");
+            if (hasEnvironment) {
+                LOG_DEBUG("MySlaveSensor::getEnvironment");
                 measurement->variant.environment_metrics.temperature = getTemperature() / 100.0F;
-                measurement->variant.environment_metrics.relative_humidity = getHumidity() / 100.0F;
-                measurement->variant.environment_metrics.barometric_pressure = getPressure() / 100.0F;
+                measurement->variant.environment_metrics.relative_humidity = getHumidity();
+                measurement->variant.environment_metrics.barometric_pressure = getPressure();
                 return true;
             }
             return false;
@@ -52,10 +49,10 @@ bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
 
             if (hasPower) {
                 LOG_DEBUG("MySlaveSensor::getPower");
-                measurement->variant.power_metrics.ch1_voltage = getBatteryVoltage() / 100.0F;
-                measurement->variant.power_metrics.ch1_current = getBatteryCurrent() / 100.0F;
-                measurement->variant.power_metrics.ch2_voltage = getSolarVoltage() / 100.0F;
-                measurement->variant.power_metrics.ch2_current = getSolarCurrent() / 100.0F;
+                measurement->variant.power_metrics.ch1_voltage = getBatteryVoltage() / 1000.0F;
+                measurement->variant.power_metrics.ch1_current = getBatteryCurrent();
+                measurement->variant.power_metrics.ch2_voltage = getSolarVoltage() / 1000.0F;
+                measurement->variant.power_metrics.ch2_current = getSolarCurrent();
                 return true;
             }
             return false;
@@ -70,10 +67,10 @@ uint32_t MySlaveSensor::getData(uint8_t what) {
 
     TwoWire *wire = nodeTelemetrySensorsMap[sensorType].second;
 
-    wire->beginTransmission(I2C_SLAVE_ADDRESS);
+    wire->beginTransmission(MY_SLAVE_SENSOR_ADDR);
     wire->write(what);
     wire->endTransmission();
-    wire->requestFrom(I2C_SLAVE_ADDRESS, length);
+    wire->requestFrom(MY_SLAVE_SENSOR_ADDR, length);
 
     while (wire->available()) {
         length--;

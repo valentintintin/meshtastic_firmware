@@ -187,6 +187,9 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
                 continue;
             LOG_DEBUG("Scan address 0x%x", (uint8_t)addr.address);
         }
+        if (addr.address == MY_SLAVE_SENSOR_ADDR) {
+            i2cBus->begin();
+        }
         i2cBus->beginTransmission(addr.address);
 #ifdef ARCH_PORTDUINO
         if (i2cBus->read() != -1)
@@ -194,11 +197,18 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
         else
             err = 2;
 #else
+        if (addr.address == MY_SLAVE_SENSOR_ADDR) {
+            i2cBus->write(0xF0);
+        }
         err = i2cBus->endTransmission();
 #endif
         type = NONE;
         if (err == 0) {
             switch (addr.address) {
+            case MY_SLAVE_SENSOR_ADDR:
+                LOG_INFO("MY_SLAVE_SENSOR sensor found at address 0x%x", (uint8_t)addr.address);
+                type = MY_SLAVE_SENSOR;
+                break;
             case SSD1306_ADDRESS:
                 type = probeOLED(addr);
                 break;

@@ -8,8 +8,6 @@
 #include "../mesh/generated/meshtastic/telemetry.pb.h"
 #include "../TelemetrySensor.h"
 
-#define I2C_SLAVE_ADDRESS 0x55
-
 #define REG_BATTERY_VOLTAGE 0x0
 #define REG_BATTERY_CURRENT 0x2
 #define REG_SOLAR_VOLTAGE 0x4
@@ -20,7 +18,7 @@
 #define REG_PING 0xF0
 
 #define HAS_POWER 0b1
-#define HAS_WEATHER 0b10
+#define HAS_ENVIRONMENT 0b10
 
 class MySlaveSensor : public TelemetrySensor {
 public:
@@ -28,7 +26,7 @@ public:
     virtual int32_t runOnce() override;
     virtual bool getMetrics(meshtastic_Telemetry *measurement) override;
 protected:
-    bool hasWeather = false;
+    bool hasEnvironment = false;
     bool hasPower = false;
 
     virtual void setup() override;
