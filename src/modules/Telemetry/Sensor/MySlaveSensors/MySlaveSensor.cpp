@@ -17,8 +17,9 @@ int32_t MySlaveSensor::runOnce()
     status = ping > 0;
     hasPower = (ping & HAS_POWER) == HAS_POWER;
     hasEnvironment = (ping & HAS_ENVIRONMENT) == HAS_ENVIRONMENT;
+    hasRtc = (ping & HAS_DATETIME) == HAS_DATETIME;
 
-    LOG_DEBUG("MySlaveSensor status: %d. hasPower: %d, hasEnvironment: %d", ping, hasPower, hasEnvironment);
+    LOG_DEBUG("MySlaveSensor status: %d. hasPower: %d, hasEnvironment: %d, hasRtc: %d", ping, hasPower, hasEnvironment, hasRtc);
 
     return initI2CSensor();
 }
@@ -106,4 +107,17 @@ uint16_t MySlaveSensor::getPressure() {
 
 uint16_t MySlaveSensor::getHumidity() {
     return getData(REG_HUMIDITY);
+}
+
+bool MySlaveSensor::getDatetime(tm *datetime) {
+    datetime->tm_sec = (int) getData(REG_SECONDS);
+    datetime->tm_min = (int) getData(REG_MINUTES);
+    datetime->tm_hour = (int) getData(REG_HOURS);
+    datetime->tm_mday = (int) getData(REG_DAYS);
+    datetime->tm_mon = (int) getData(REG_MONTHS) - 1;
+    datetime->tm_year = (int) getData(REG_YEARS) - 1900;
+
+    LOG_DEBUG("MySlaveSensor::getDatetime, year: %d", 1900 + datetime->tm_year);
+
+    return 1900 + datetime->tm_year >= 2024;
 }

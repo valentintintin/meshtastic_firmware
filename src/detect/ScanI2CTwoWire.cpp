@@ -198,7 +198,7 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
             err = 2;
 #else
         if (addr.address == MY_SLAVE_SENSOR_ADDR) {
-            i2cBus->write(0xF0);
+            i2cBus->write(REG_PING);
         }
         err = i2cBus->endTransmission();
 #endif

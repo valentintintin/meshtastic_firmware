@@ -5,6 +5,7 @@
 #include <Throttle.h>
 #include <sys/time.h>
 #include <time.h>
+#include "modules/Telemetry/Sensor/MySlaveSensors/MySlaveRtcSensor.h"
 
 static RTCQuality currentQuality = RTCQualityNone;
 uint32_t lastSetFromPhoneNtpOrGps = 0;
@@ -86,7 +87,28 @@ void readFromRTC()
         }
     }
 #else
-    if (!gettimeofday(&tv, NULL)) {
+    if (rtc_found.address == MY_SLAVE_SENSOR_ADDR) {
+        uint32_t now = millis();
+        MySlaveRtcSensor mySlaveRtcSensor;
+        tm t{};
+        if (mySlaveRtcSensor.getDatetime(&t)) {
+            tv.tv_sec = gm_mktime(&t);
+            tv.tv_usec = 0;
+
+            uint32_t printableEpoch = tv.tv_sec; // Print lib only supports 32 bit but time_t can be 64 bit on some platforms
+            LOG_DEBUG("Read RTC time from MySlaveSensor getTime as %02d-%02d-%02d %02d:%02d:%02d (%ld)",
+                      t.tm_year + 1900,
+                      t.tm_mon + 1,
+                      t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, printableEpoch);
+            timeStartMsec = now;
+            zeroOffsetSecs = tv.tv_sec;
+            if (currentQuality == RTCQualityNone) {
+                currentQuality = RTCQualityDevice;
+            }
+        }
+    }
+
+    if (currentQuality != RTCQualityDevice && !gettimeofday(&tv, NULL)) {
         uint32_t now = millis();
         uint32_t printableEpoch = tv.tv_sec; // Print lib only supports 32 bit but time_t can be 64 bit on some platforms
         LOG_DEBUG("Read RTC time as %ld", printableEpoch);

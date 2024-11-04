@@ -255,7 +255,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
             return getINAVoltage();
         }
 
-        if (mySlavePowerSensor.isInitialized() || mySlavePowerSensor.runOnce() > 0) {
+        if (mySlavePowerSensor.isInitialized()) {
             LOG_DEBUG("Using mySlavePowerSensor on I2C for device battery voltage");
             return mySlavePowerSensor.getBusVoltageMv();
         }

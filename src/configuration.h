@@ -119,7 +119,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // -----------------------------------------------------------------------------
 // SENSOR
 // -----------------------------------------------------------------------------
-#define MY_SLAVE_SENSOR_ADDR 0x7E
+#define MY_SLAVE_SENSOR_ADDR 0x11
 #define BME_ADDR 0x76
 #define BME_ADDR_ALTERNATE 0x77
 #define MCP9808_ADDR 0x18
