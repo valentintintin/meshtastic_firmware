@@ -37,7 +37,9 @@ bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
                 measurement->variant.environment_metrics.temperature = getTemperature() / 100.0F;
                 measurement->variant.environment_metrics.relative_humidity = getHumidity();
                 measurement->variant.environment_metrics.barometric_pressure = getPressure();
-                return true;
+                return measurement->variant.environment_metrics.temperature > 0
+                && measurement->variant.environment_metrics.relative_humidity > 0
+                && measurement->variant.environment_metrics.barometric_pressure > 0;
             }
             return false;
         case meshtastic_Telemetry_power_metrics_tag:
@@ -54,7 +56,10 @@ bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
                 measurement->variant.power_metrics.ch1_current = getBatteryCurrent();
                 measurement->variant.power_metrics.ch2_voltage = getSolarVoltage() / 1000.0F;
                 measurement->variant.power_metrics.ch2_current = getSolarCurrent();
-                return true;
+                return measurement->variant.power_metrics.ch1_voltage > 0
+                && measurement->variant.power_metrics.ch1_current > 0
+                && measurement->variant.power_metrics.ch2_voltage > 0
+                && measurement->variant.power_metrics.ch2_current > 0;
             }
             return false;
     }
