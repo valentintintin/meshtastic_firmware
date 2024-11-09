@@ -28,8 +28,6 @@
 #define HAS_CPU_SHUTDOWN 1
 #define USE_SX1262
 
-#define NEIGHBOR_INFO_LORA
-
 #undef LORA_SCK
 #undef LORA_MISO
 #undef LORA_MOSI
