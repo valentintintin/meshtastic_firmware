@@ -5,6 +5,7 @@
 #include <pico/sleep.h>
 #include <pico/stdlib.h>
 #include <pico/unique_id.h>
+#include <hardware/vreg.h>
 
 void setBluetoothEnable(bool enable)
 {
@@ -125,7 +126,7 @@ void enterDfuMode()
 void initVariant()
 {
     /* Set the system frequency to 18 MHz. */
-    set_sys_clock_khz(18 * KHZ, false);
+    set_sys_clock_khz(36 * KHZ, false);
     /* The previous line automatically detached clk_peri from clk_sys, and
        attached it to pll_usb. We need to attach clk_peri back to system PLL to keep SPI
        working at this low speed.
@@ -134,14 +135,15 @@ void initVariant()
     clock_configure(clk_peri,
                     0,                                                // No glitchless mux
                     CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS, // System PLL on AUX mux
-                    18 * MHZ,                                         // Input frequency
-                    18 * MHZ                                          // Output (must be same as no divider)
+                    36 * MHZ,                                         // Input frequency
+                    36 * MHZ                                          // Output (must be same as no divider)
     );
     /* Run also ADC on lower clk_sys. */
-    clock_configure(clk_adc, 0, CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS, 18 * MHZ, 18 * MHZ);
+    clock_configure(clk_adc, 0, CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS, 36 * MHZ, 36 * MHZ);
     /* Run RTC from XOSC since USB clock is off */
     clock_configure(clk_rtc, 0, CLOCKS_CLK_RTC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC, 12 * MHZ, 47 * KHZ);
-    /* Turn off USB PLL */
-    pll_deinit(pll_usb);
+    vreg_set_voltage(VREG_VOLTAGE_0_90);
+//    /* Turn off USB PLL */
+//    pll_deinit(pll_usb);
 }
 #endif

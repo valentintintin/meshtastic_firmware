@@ -28,6 +28,18 @@
 #define HAS_CPU_SHUTDOWN 1
 #define USE_SX1262
 
+#define RP2040_SLOW_CLOCK
+
+#ifdef RP2040_SLOW_CLOCK
+// Redefine UART1 serial log output to avoid collision with UART0 for GPS.
+#define SERIAL2_TX 8
+#define SERIAL2_RX 9
+// Reroute log output in SensorLib when USB is not available
+#define log_e(...) Serial2.printf(__VA_ARGS__)
+#define log_i(...) Serial2.printf(__VA_ARGS__)
+#define log_d(...) Serial2.printf(__VA_ARGS__)
+#endif
+
 #undef LORA_SCK
 #undef LORA_MISO
 #undef LORA_MOSI
