@@ -126,7 +126,8 @@ void enterDfuMode()
 void initVariant()
 {
     /* Set the system frequency to 18 MHz. */
-    set_sys_clock_khz(36 * KHZ, false);
+//    set_sys_clock_khz(36 * KHZ, false);
+    set_sys_clock_pll(840000000, 7, 5); // 24 Mhz
     /* The previous line automatically detached clk_peri from clk_sys, and
        attached it to pll_usb. We need to attach clk_peri back to system PLL to keep SPI
        working at this low speed.
@@ -135,11 +136,11 @@ void initVariant()
     clock_configure(clk_peri,
                     0,                                                // No glitchless mux
                     CLOCKS_CLK_PERI_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS, // System PLL on AUX mux
-                    36 * MHZ,                                         // Input frequency
-                    36 * MHZ                                          // Output (must be same as no divider)
+                    24 * MHZ,                                         // Input frequency
+                    25 * MHZ                                          // Output (must be same as no divider)
     );
     /* Run also ADC on lower clk_sys. */
-    clock_configure(clk_adc, 0, CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS, 36 * MHZ, 36 * MHZ);
+    clock_configure(clk_adc, 0, CLOCKS_CLK_ADC_CTRL_AUXSRC_VALUE_CLKSRC_PLL_SYS, 24 * MHZ, 24 * MHZ);
     /* Run RTC from XOSC since USB clock is off */
     clock_configure(clk_rtc, 0, CLOCKS_CLK_RTC_CTRL_AUXSRC_VALUE_XOSC_CLKSRC, 12 * MHZ, 47 * KHZ);
     vreg_set_voltage(VREG_VOLTAGE_0_90);
