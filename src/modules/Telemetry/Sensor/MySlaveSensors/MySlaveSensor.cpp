@@ -12,20 +12,17 @@ int32_t MySlaveSensor::runOnce()
         return DEFAULT_SENSOR_MINIMUM_WAIT_TIME_BETWEEN_READS;
     }
 
-    uint8_t ping = getData(REG_PING);
-
-    status = ping > 0;
-    hasPower = (ping & HAS_POWER) == HAS_POWER;
-    hasEnvironment = (ping & HAS_ENVIRONMENT) == HAS_ENVIRONMENT;
-    hasRtc = (ping & HAS_DATETIME) == HAS_DATETIME;
-
-    LOG_DEBUG("MySlaveSensor status: %d. hasPower: %d, hasEnvironment: %d, hasRtc: %d", ping, hasPower, hasEnvironment, hasRtc);
+    ping();
 
     return initI2CSensor();
 }
 
 bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
 {
+    if (!status) {
+        ping();
+    }
+
     switch (measurement->which_variant) {
         case meshtastic_Telemetry_environment_metrics_tag:
             measurement->variant.environment_metrics.has_temperature = hasEnvironment;
@@ -37,9 +34,9 @@ bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
                 measurement->variant.environment_metrics.temperature = getTemperature() / 100.0F;
                 measurement->variant.environment_metrics.relative_humidity = getHumidity();
                 measurement->variant.environment_metrics.barometric_pressure = getPressure();
-                return measurement->variant.environment_metrics.temperature > 0
-                && measurement->variant.environment_metrics.relative_humidity > 0
-                && measurement->variant.environment_metrics.barometric_pressure > 0;
+                return measurement->variant.environment_metrics.temperature != 0
+                && measurement->variant.environment_metrics.relative_humidity != 0
+                && measurement->variant.environment_metrics.barometric_pressure != 0;
             }
             return false;
         case meshtastic_Telemetry_power_metrics_tag:
@@ -56,10 +53,10 @@ bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
                 measurement->variant.power_metrics.ch1_current = getBatteryCurrent();
                 measurement->variant.power_metrics.ch2_voltage = getSolarVoltage() / 1000.0F;
                 measurement->variant.power_metrics.ch2_current = getSolarCurrent();
-                return measurement->variant.power_metrics.ch1_voltage > 0
-                && measurement->variant.power_metrics.ch1_current > 0
-                && measurement->variant.power_metrics.ch2_voltage > 0
-                && measurement->variant.power_metrics.ch2_current > 0;
+                return measurement->variant.power_metrics.ch1_voltage != 0
+                && measurement->variant.power_metrics.ch1_current != 0
+                && measurement->variant.power_metrics.ch2_voltage != 0
+                && measurement->variant.power_metrics.ch2_current != 0;
             }
             return false;
     }
@@ -84,6 +81,19 @@ uint32_t MySlaveSensor::getData(uint8_t what) {
     }
 
     return value;
+}
+
+uint8_t MySlaveSensor::ping() {
+    uint8_t ping = getData(REG_PING);
+
+    status = ping > 0;
+    hasPower = (ping & HAS_POWER) == HAS_POWER;
+    hasEnvironment = (ping & HAS_ENVIRONMENT) == HAS_ENVIRONMENT;
+    hasRtc = (ping & HAS_DATETIME) == HAS_DATETIME;
+
+    LOG_DEBUG("MySlaveSensor status: %d. hasPower: %d, hasEnvironment: %d, hasRtc: %d", ping, hasPower, hasEnvironment, hasRtc);
+
+    return ping;
 }
 
 uint16_t MySlaveSensor::getBatteryVoltage() {

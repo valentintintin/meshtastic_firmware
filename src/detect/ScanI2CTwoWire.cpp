@@ -8,6 +8,8 @@
 #endif
 #if !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
 #include "meshUtils.h" // vformat
+#include "modules/Telemetry/Sensor/MySlaveSensors/MySlaveSensor.h"
+
 #endif
 
 // AXP192 and AXP2101 have the same device address, we just need to identify it in Power.cpp

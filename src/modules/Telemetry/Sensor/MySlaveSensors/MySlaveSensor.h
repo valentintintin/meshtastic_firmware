@@ -33,14 +33,8 @@ public:
     explicit MySlaveSensor(const char *sensorName);
     int32_t runOnce() override;
     bool getMetrics(meshtastic_Telemetry *measurement) override;
+
     bool getDatetime(tm *datetime);
-protected:
-    bool hasEnvironment = false;
-    bool hasPower = false;
-    bool hasRtc = false;
-
-    void setup() override;
-
     uint16_t getBatteryVoltage();
     uint16_t getBatteryCurrent();
     uint16_t getSolarVoltage();
@@ -48,6 +42,13 @@ protected:
     int16_t getTemperature();
     uint16_t getPressure();
     uint16_t getHumidity();
+    uint8_t ping();
+protected:
+    bool hasEnvironment = false;
+    bool hasPower = false;
+    bool hasRtc = false;
+
+    void setup() override;
 private:
     uint32_t getData(uint8_t what);
 };
