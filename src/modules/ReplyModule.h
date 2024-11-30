@@ -1,20 +1,17 @@
 #pragma once
+#include "Observer.h"
 #include "SinglePortModule.h"
 
-/**
- * A simple example module that just replies with "Message received" to any message it receives.
- */
-class ReplyModule : public SinglePortModule
+class ReplyModule : public SinglePortModule, public Observable<const meshtastic_MeshPacket *>
 {
   public:
-    /** Constructor
-     * name is for debugging output
-     */
-    ReplyModule() : SinglePortModule("reply", meshtastic_PortNum_REPLY_APP) {}
+    ReplyModule() : SinglePortModule("reply", meshtastic_PortNum_TEXT_MESSAGE_APP) {}
 
   protected:
-    /** For reply module we do all of our processing in the (normally optional)
-     * want_replies handling
-     */
+    virtual bool wantPacket(const meshtastic_MeshPacket *p) override;
+    virtual void alterReceived(meshtastic_MeshPacket &mp) override;
     virtual meshtastic_MeshPacket *allocReply() override;
+
+private:
+    char tempBuffer[237] = { '\0' };
 };
