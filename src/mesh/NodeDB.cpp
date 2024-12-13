@@ -541,7 +541,7 @@ void NodeDB::initConfigIntervals()
 
     config.display.screen_on_secs = default_screen_on_secs;
 
-#if defined(T_WATCH_S3) || defined(T_DECK) || defined(RAK14014)
+#if defined(T_WATCH_S3) || defined(T_DECK) || defined(MESH_TAB) || defined(RAK14014)
     config.power.is_power_saving = true;
     config.display.screen_on_secs = 30;
     config.power.wait_bluetooth_secs = 30;
@@ -1372,11 +1372,14 @@ meshtastic_NodeInfoLite *NodeDB::getOrCreateMeshNode(NodeNum n)
             if (oldestBoringIndex != -1) {
                 oldestIndex = oldestBoringIndex;
             }
-            // Shove the remaining nodes down the chain
-            for (int i = oldestIndex; i < numMeshNodes - 1; i++) {
-                meshNodes->at(i) = meshNodes->at(i + 1);
+
+            if (oldestIndex != -1) {
+                // Shove the remaining nodes down the chain
+                for (int i = oldestIndex; i < numMeshNodes - 1; i++) {
+                    meshNodes->at(i) = meshNodes->at(i + 1);
+                }
+                (numMeshNodes)--;
             }
-            (numMeshNodes)--;
         }
         // add the node at the end
         lite = &meshNodes->at((numMeshNodes)++);
