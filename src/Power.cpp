@@ -76,7 +76,9 @@ INA219Sensor ina219Sensor;
 INA226Sensor ina226Sensor;
 INA260Sensor ina260Sensor;
 INA3221Sensor ina3221Sensor;
+#ifdef SLAVE_SENSOR
 MySlavePowerSensor mySlavePowerSensor;
+#endif
 #endif
 
 #if !MESHTASTIC_EXCLUDE_I2C && !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
@@ -256,9 +258,11 @@ class AnalogBatteryLevel : public HasBatteryLevel
             return getINAVoltage();
         }
 
+#ifdef SLAVE_SENSOR
         if (mySlavePowerSensor.isInitialized()) {
             return mySlavePowerSensor.getBusVoltageMv();
         }
+#endif
 #endif
 
 #ifndef ADC_MULTIPLIER

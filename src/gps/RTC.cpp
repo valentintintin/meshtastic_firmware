@@ -5,7 +5,10 @@
 #include <Throttle.h>
 #include <sys/time.h>
 #include <time.h>
+
+#ifdef SLAVE_SENSOR
 #include "modules/Telemetry/Sensor/MySlaveSensors/MySlaveRtcSensor.h"
+#endif
 
 static RTCQuality currentQuality = RTCQualityNone;
 uint32_t lastSetFromPhoneNtpOrGps = 0;
@@ -86,7 +89,7 @@ void readFromRTC()
             currentQuality = RTCQualityDevice;
         }
     }
-#else
+#elif defined(SLAVE_SENSOR)
     if (rtc_found.address == MY_SLAVE_SENSOR_ADDR) {
         uint32_t now = millis();
         MySlaveRtcSensor mySlaveRtcSensor;

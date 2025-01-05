@@ -64,8 +64,10 @@ int32_t PowerTelemetryModule::runOnce()
                 result = ina3221Sensor.runOnce();
             if (max17048Sensor.hasSensor() && !max17048Sensor.isInitialized())
                 result = max17048Sensor.runOnce();
+#ifdef SLAVE_SENSOR
             if (mySlavePowerSensor.hasSensor() && !mySlavePowerSensor.isInitialized())
                 result = mySlavePowerSensor.runOnce();
+#endif
         }
         return result;
 #else
@@ -182,8 +184,10 @@ bool PowerTelemetryModule::getPowerTelemetry(meshtastic_Telemetry *m)
         valid = ina3221Sensor.getMetrics(m);
     if (max17048Sensor.hasSensor())
         valid = max17048Sensor.getMetrics(m);
+#ifdef SLAVE_SENSOR
     if (mySlavePowerSensor.hasSensor())
         valid = mySlavePowerSensor.getMetrics(m);
+#endif
 #endif
 
     return valid;

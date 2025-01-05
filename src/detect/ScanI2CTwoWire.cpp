@@ -8,8 +8,10 @@
 #endif
 #if !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
 #include "meshUtils.h" // vformat
-#include "modules/Telemetry/Sensor/MySlaveSensors/MySlaveSensor.h"
+#endif
 
+#ifdef SLAVE_SENSOR
+#include "modules/Telemetry/Sensor/MySlaveSensors/MySlaveSensor.h"
 #endif
 
 // AXP192 and AXP2101 have the same device address, we just need to identify it in Power.cpp
@@ -154,9 +156,11 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
                 continue;
             LOG_DEBUG("Scan address 0x%x", (uint8_t)addr.address);
         }
+#ifdef SLAVE_SENSOR
         if (addr.address == MY_SLAVE_SENSOR_ADDR) {
             i2cBus->begin();
         }
+#endif
         i2cBus->beginTransmission(addr.address);
 #ifdef ARCH_PORTDUINO
         err = 2;
@@ -169,18 +173,22 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
         if (err != 0)
             err = 2;
 #else
+#ifdef SLAVE_SENSOR
         if (addr.address == MY_SLAVE_SENSOR_ADDR) {
             i2cBus->write(REG_PING);
         }
+#endif
         err = i2cBus->endTransmission();
 #endif
         type = NONE;
         if (err == 0) {
             switch (addr.address) {
+#ifdef SLAVE_SENSOR
             case MY_SLAVE_SENSOR_ADDR:
                 LOG_INFO("MY_SLAVE_SENSOR sensor found at address 0x%x", (uint8_t)addr.address);
                 type = MY_SLAVE_SENSOR;
                 break;
+#endif
             case SSD1306_ADDRESS:
                 type = probeOLED(addr);
                 break;

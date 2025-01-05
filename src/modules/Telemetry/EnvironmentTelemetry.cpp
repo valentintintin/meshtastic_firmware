@@ -39,7 +39,9 @@
 #include "Sensor/SHTC3Sensor.h"
 #include "Sensor/TSL2591Sensor.h"
 #include "Sensor/VEML7700Sensor.h"
-#include "Sensor/MySlaveSensors/MySlaveEnvironmentSensor.h"
+#ifdef SLAVE_SENSOR
+    #include "Sensor/MySlaveSensors/MySlaveEnvironmentSensor.h"
+#endif
 
 BMP085Sensor bmp085Sensor;
 BMP280Sensor bmp280Sensor;
@@ -69,7 +71,9 @@ T1000xSensor t1000xSensor;
 #include "Sensor/IndicatorSensor.h"
 IndicatorSensor indicatorSensor;
 #endif
-MySlaveEnvironmentSensor mySlaveEnvironmentSensor;
+#ifdef SLAVE_SENSOR
+    MySlaveEnvironmentSensor mySlaveEnvironmentSensor;
+#endif
 
 #define FAILED_STATE_SENSOR_READ_MULTIPLIER 10
 #define DISPLAY_RECEIVEID_MEASUREMENTS_ON_SCREEN true
@@ -162,8 +166,10 @@ int32_t EnvironmentTelemetryModule::runOnce()
                 result = max17048Sensor.runOnce();
             if (cgRadSens.hasSensor())
                 result = cgRadSens.runOnce();
+#ifdef SLAVE_SENSOR
             if (mySlavePowerSensor.hasSensor())
                 result = mySlavePowerSensor.runOnce();
+#endif
 #endif
         }
         return result;
@@ -426,10 +432,12 @@ bool EnvironmentTelemetryModule::getEnvironmentTelemetry(meshtastic_Telemetry *m
         valid = valid && cgRadSens.getMetrics(m);
         hasSensor = true;
     }
+#ifdef SLAVE_SENSOR
     if (mySlaveEnvironmentSensor.hasSensor()) {
         valid = valid && mySlaveEnvironmentSensor.getMetrics(m);
         hasSensor = true;
     }
+#endif
 #endif
     return valid && hasSensor;
 }
@@ -632,11 +640,13 @@ AdminMessageHandleResult EnvironmentTelemetryModule::handleAdminMessageForModule
         if (result != AdminMessageHandleResult::NOT_HANDLED)
             return result;
     }
+#ifdef SLAVE_SENSOR
     if (mySlaveEnvironmentSensor.hasSensor()) {
         result = mySlaveEnvironmentSensor.handleAdminMessage(mp, request, response);
         if (result != AdminMessageHandleResult::NOT_HANDLED)
             return result;
     }
+#endif
 #endif
     return result;
 }
