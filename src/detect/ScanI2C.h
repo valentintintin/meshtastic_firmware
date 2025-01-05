@@ -64,6 +64,8 @@ class ScanI2C
         TPS65233,
         MPR121KB,
         CGRADSENS,
+        INA226,
+        NXP_SE050,
         MY_SLAVE_SENSOR
     } DeviceType;
 
