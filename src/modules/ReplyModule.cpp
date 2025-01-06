@@ -6,7 +6,12 @@
 #include <assert.h>
 
 bool ReplyModule::wantPacket(const meshtastic_MeshPacket *p) {
-    return MeshService::isTextPayload(p);
+    return MeshService::isTextPayload(p) && (
+            (moduleConfig.neighbor_info.enabled && moduleConfig.neighbor_info.transmit_over_lora)
+            || config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER
+            || config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER_LATE
+            || config.device.role == meshtastic_Config_DeviceConfig_Role_REPEATER
+    );
 }
 
 void ReplyModule::alterReceived(meshtastic_MeshPacket &mp) {
