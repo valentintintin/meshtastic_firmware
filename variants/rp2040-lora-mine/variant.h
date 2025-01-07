@@ -26,9 +26,7 @@
 #define OCV_ARRAY 12700, 11000
 
 #define HAS_CPU_SHUTDOWN 1
-#define EXCLUDE_POWER_FSM 0
 #define USE_SX1262
-#define SLAVE_SENSOR
 
 //#define RP2040_SLOW_CLOCK
 
