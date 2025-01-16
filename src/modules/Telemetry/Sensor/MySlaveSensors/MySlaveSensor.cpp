@@ -34,9 +34,7 @@ bool MySlaveSensor::getMetrics(meshtastic_Telemetry *measurement)
                 measurement->variant.environment_metrics.temperature = getTemperature() / 100.0F;
                 measurement->variant.environment_metrics.relative_humidity = getHumidity();
                 measurement->variant.environment_metrics.barometric_pressure = getPressure();
-                return measurement->variant.environment_metrics.temperature != 0
-                && measurement->variant.environment_metrics.relative_humidity != 0
-                && measurement->variant.environment_metrics.barometric_pressure != 0;
+                return measurement->variant.environment_metrics.barometric_pressure != 0;
             }
             return false;
         case meshtastic_Telemetry_power_metrics_tag:
