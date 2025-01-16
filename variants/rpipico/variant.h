@@ -21,6 +21,8 @@
 // ratio of voltage divider = 3.0 (R17=200k, R18=100k)
 #define ADC_MULTIPLIER 3.1 // 3.0 + a bit for being optimistic
 #define BATTERY_SENSE_RESOLUTION_BITS ADC_RESOLUTION
+#define NUM_OCV_POINTS 2
+#define OCV_ARRAY 12700, 11000
 
 #define USE_SX1262
 

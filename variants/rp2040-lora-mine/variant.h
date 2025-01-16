@@ -28,7 +28,7 @@
 #define HAS_CPU_SHUTDOWN 1
 #define USE_SX1262
 
-//#define RP2040_SLOW_CLOCK
+ #define RP2040_SLOW_CLOCK
 
 #ifdef RP2040_SLOW_CLOCK
 // Redefine UART1 serial log output to avoid collision with UART0 for GPS.
