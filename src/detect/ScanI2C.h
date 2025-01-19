@@ -66,6 +66,7 @@ class ScanI2C
         CGRADSENS,
         INA226,
         NXP_SE050,
+        DFROBOT_RAIN,
         MY_SLAVE_SENSOR
     } DeviceType;
 
