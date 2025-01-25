@@ -13,5 +13,5 @@ class ReplyModule : public SinglePortModule, public Observable<const meshtastic_
     virtual meshtastic_MeshPacket *allocReply() override;
 
 private:
-    char tempBuffer[237] = { '\0' };
+    char tempBuffer[200] = { '\0' };
 };
