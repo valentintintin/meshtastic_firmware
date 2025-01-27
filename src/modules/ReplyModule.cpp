@@ -18,8 +18,7 @@ void ReplyModule::alterReceived(meshtastic_MeshPacket &mp) {
     if (isToUs(&mp)) {
         mp.decoded.want_response = true;
     } else if (isBroadcast(mp.to) && mp.decoded.payload.bytes[0] == '!') {
-        sprintf(tempBuffer, "%.160s\n->%s(%d/%d)|RSSI:%d|SNR:%.2f", mp.decoded.payload.bytes + 1,
-            owner.short_name, mp.hop_start - mp.hop_limit, mp.hop_limit, mp.rx_rssi, mp.rx_snr);
+        createNewMessage(&mp);
     }
 }
 
@@ -40,8 +39,8 @@ meshtastic_MeshPacket *ReplyModule::allocReply()
 
     const auto reply = allocDataPacket();                 // Allocate a packet for sending
 
-    sprintf(tempBuffer, ">%.30s[...]\nSauts: %d | RSSI: %d | SNR: %.2f", currentRequest->decoded.payload.bytes,
-        currentRequest->hop_start - currentRequest->hop_limit, currentRequest->rx_rssi, currentRequest->rx_snr);
+    createNewMessage(currentRequest);
+
     reply->to = currentRequest->from;
     reply->channel = 0;
 
@@ -49,4 +48,18 @@ meshtastic_MeshPacket *ReplyModule::allocReply()
     memcpy(reply->decoded.payload.bytes, tempBuffer, reply->decoded.payload.size);
 
     return reply;
+}
+
+void ReplyModule::createNewMessage(const meshtastic_MeshPacket *p) {
+#ifdef DEBUG_PORT
+     LOG_INFO("Received message for reply from=0x%0x, id=%d, msg=%.*s", p->from, p->id, p->decoded.payload.size, p->decoded.payload.bytes);
+#endif
+
+    if (p->hop_start - p->hop_limit == 0) {
+        sprintf(tempBuffer, "%.160s\nVia %s|Direct|RSSI:%d|SNR:%.2f", p->decoded.payload.bytes,
+                owner.short_name, p->rx_rssi, p->rx_snr);
+    } else {
+        sprintf(tempBuffer, "%.160s\nVia %s|%d/%d", p->decoded.payload.bytes,
+                owner.short_name, p->hop_start - p->hop_limit, p->hop_limit);
+    }
 }
