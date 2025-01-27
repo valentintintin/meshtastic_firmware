@@ -19,7 +19,7 @@ int32_t DeviceTelemetryModule::runOnce()
 {
     refreshUptime();
     bool isImpoliteRole =
-        IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER);
+        IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
     if (((lastSentToMesh == 0) ||
          ((uptimeLastMs - lastSentToMesh) >=
           Default::getConfiguredOrDefaultMsScaled(moduleConfig.telemetry.device_update_interval,
