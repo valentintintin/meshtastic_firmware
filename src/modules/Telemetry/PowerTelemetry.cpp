@@ -69,7 +69,7 @@ int32_t PowerTelemetryModule::runOnce()
                 result = mySlavePowerSensor.runOnce();
 #endif
         }
-        return result;
+        return result == UINT32_MAX ? disable() : setStartDelay();
 #else
         return disable();
 #endif
