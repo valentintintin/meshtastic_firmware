@@ -122,10 +122,12 @@ Will be used for broadcast.
 */
 int32_t NeighborInfoModule::runOnce()
 {
-    bool isImpoliteRole =
+    const bool isImpoliteRole =
         IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
 
-    if (moduleConfig.neighbor_info.transmit_over_lora && !channels.isDefaultChannel(channels.getPrimaryIndex()) &&
+    const bool transmitOverLora = moduleConfig.neighbor_info.transmit_over_lora || IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
+
+    if (transmitOverLora && !channels.isDefaultChannel(channels.getPrimaryIndex()) &&
         airTime->isTxAllowedChannelUtil(isImpoliteRole) && airTime->isTxAllowedAirUtil()) {
         sendNeighborInfo(NODENUM_BROADCAST, false);
     } else {
