@@ -238,6 +238,7 @@ bool PowerTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 
         meshtastic_MeshPacket *p = allocDataProtobuf(m);
         p->to = dest;
+        p->hop_limit = 0;
         p->decoded.want_response = false;
         if (config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR)
             p->priority = meshtastic_MeshPacket_Priority_RELIABLE;

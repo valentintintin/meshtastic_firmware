@@ -174,6 +174,7 @@ bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->to = dest;
+    p->hop_limit = HOP_RELIABLE;
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 
