@@ -125,7 +125,10 @@ int32_t NeighborInfoModule::runOnce()
     const bool isImpoliteRole =
         IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
 
-    const bool transmitOverLora = moduleConfig.neighbor_info.transmit_over_lora || IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
+    const bool transmitOverLora = moduleConfig.neighbor_info.transmit_over_lora
+    || !HAS_NETWORKING
+    || IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE)
+    || !config.has_network || !moduleConfig.has_mqtt;
 
     if (transmitOverLora && !channels.isDefaultChannel(channels.getPrimaryIndex()) &&
         airTime->isTxAllowedChannelUtil(isImpoliteRole) && airTime->isTxAllowedAirUtil()) {
