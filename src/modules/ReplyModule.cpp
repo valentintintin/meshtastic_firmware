@@ -111,7 +111,7 @@ void ReplyModule::doSearchNeighbor(MyCommandParser::Argument *args, char *respon
         if (neighbor.has_user && strcasecmp(neighbor.user.short_name, args[0].asString) == 0) {
             const time_t epochTimeT = neighbor.last_heard;
             const tm ts = *localtime(&epochTimeT);
-            sprintf(response, "0x%x -> %s\n%s\nSNR: %.2f\nEntendu: %d-%d-%dT%d:%d:%dZ", neighbor.num, neighbor.user.short_name, neighbor.user.long_name, neighbor.snr,
+            sprintf(response, "!%x -> %s\n%s\nSNR: %.2f\nEntendu: %d-%d-%dT%d:%d:%dZ", neighbor.num, neighbor.user.short_name, neighbor.user.long_name, neighbor.snr,
                 ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec);
             return;
         }
