@@ -1,19 +1,37 @@
-#pragma once
+#ifndef MESHTASTIC_MYSLAVESENSOR_H
+#define MESHTASTIC_MYSLAVESENSOR_H
+
+#if USE_REPLYMODULE
+
 #include "Observer.h"
 #include "SinglePortModule.h"
+
+#include <CommandParser.h>
+
+//                  COMMANDS, COMMAND_ARGS, COMMAND_NAME_LENGTH, COMMAND_ARG_SIZE, COMMAND_HLP_LENGTH, RESPONSE_SIZE
+typedef CommandParser<32,       2,              16,                     200,                0,              200> MyCommandParser;
 
 class ReplyModule : public SinglePortModule, public Observable<const meshtastic_MeshPacket *>
 {
   public:
-    ReplyModule() : SinglePortModule("reply", meshtastic_PortNum_TEXT_MESSAGE_APP) {}
+    ReplyModule();
 
   protected:
-    virtual bool wantPacket(const meshtastic_MeshPacket *p) override;
-    virtual void alterReceived(meshtastic_MeshPacket &mp) override;
-    virtual meshtastic_MeshPacket *allocReply() override;
+    bool wantPacket(const meshtastic_MeshPacket *p) override;
+    void alterReceived(meshtastic_MeshPacket &mp) override;
+    meshtastic_MeshPacket *allocReply() override;
 
 private:
-    char tempBuffer[200] = {};
+    char tempBuffer[MyCommandParser::MAX_RESPONSE_SIZE] = {};
+    MyCommandParser parser;
 
-    void createNewMessage(const meshtastic_MeshPacket *p);
+    bool processCommand(const char *command);
+
+    static void doPing(MyCommandParser::Argument *args, char *response);
+    static void doNeighbors(MyCommandParser::Argument *args, char *response);
+    static void doSearchNeighbor(MyCommandParser::Argument *args, char *response);
+    static void doHelp(MyCommandParser::Argument *args, char *response);
 };
+
+#endif
+#endif //MESHTASTIC_MYSLAVESENSOR_H

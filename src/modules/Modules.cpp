@@ -83,13 +83,15 @@
 #endif
 #if !defined(CONFIG_IDF_TARGET_ESP32S2) && !MESHTASTIC_EXCLUDE_SERIAL
 #include "modules/SerialModule.h"
-#include "ReplyModule.h"
-
 #endif
 #endif
 
 #if !MESHTASTIC_EXCLUDE_DROPZONE
 #include "modules/DropzoneModule.h"
+#endif
+
+#if USE_REPLYMODULE
+#include "ReplyModule.h"
 #endif
 
 /**
@@ -142,7 +144,9 @@ void setupModules()
         new PowerStressModule();
 #endif
         // Example: Put your module here
+#if USE_REPLYMODULE
          new ReplyModule();
+#endif
 #if (HAS_BUTTON || ARCH_PORTDUINO) && !MESHTASTIC_EXCLUDE_INPUTBROKER
         rotaryEncoderInterruptImpl1 = new RotaryEncoderInterruptImpl1();
         if (!rotaryEncoderInterruptImpl1->init()) {
