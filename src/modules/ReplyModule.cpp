@@ -7,6 +7,7 @@
 #include <RTC.h>
 
 #include "NeighborInfoModule.h"
+#include "RoutingModule.h"
 
 ReplyModule::ReplyModule() : SinglePortModule("reply", meshtastic_PortNum_TEXT_MESSAGE_APP) {
     parser.registerCommand("!ping", "", doPing);
@@ -35,12 +36,9 @@ meshtastic_MeshPacket *ReplyModule::allocReply()
 #endif
 
     const auto reply = allocDataPacket();                 // Allocate a packet for sending
-
-    reply->to = currentRequest->from;
-    reply->channel = 0;
+    setReplyTo(reply, *currentRequest);
 
     processCommand(reinterpret_cast<const char *>(currentRequest->decoded.payload.bytes));
-
     reply->decoded.payload.size = strlen(tempBuffer);
     memcpy(reply->decoded.payload.bytes, tempBuffer, reply->decoded.payload.size);
 
