@@ -36,8 +36,8 @@ void NeighborInfoModule::printNodeDBNeighbors()
 
 /* Send our initial owner announcement 35 seconds after we start (to give network time to setup) */
 NeighborInfoModule::NeighborInfoModule()
-        : ProtobufModule("neighborinfo", meshtastic_PortNum_NEIGHBORINFO_APP, &meshtastic_NeighborInfo_msg),
-          concurrency::OSThread("NeighborInfo")
+    : ProtobufModule("neighborinfo", meshtastic_PortNum_NEIGHBORINFO_APP, &meshtastic_NeighborInfo_msg),
+      concurrency::OSThread("NeighborInfo")
 {
     ourPortNum = meshtastic_PortNum_NEIGHBORINFO_APP;
     nodeStatusObserver.observe(&nodeStatus->onNewStatus);
@@ -63,7 +63,7 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
     neighborInfo->node_id = my_node_id;
     neighborInfo->last_sent_by_id = my_node_id;
     neighborInfo->node_broadcast_interval_secs =
-            Default::getConfiguredOrDefault(moduleConfig.neighbor_info.update_interval, default_telemetry_broadcast_interval_secs);
+        Default::getConfiguredOrDefault(moduleConfig.neighbor_info.update_interval, default_telemetry_broadcast_interval_secs);
 
     cleanUpNeighbors();
 
@@ -93,7 +93,7 @@ void NeighborInfoModule::cleanUpNeighbors()
         if ((now - it->last_rx_time > it->node_broadcast_interval_secs * 2) && (it->node_id != my_node_id)) {
             LOG_DEBUG("Remove neighbor with node ID 0x%x", it->node_id);
             it = std::vector<meshtastic_Neighbor>::reverse_iterator(
-                    neighbors.erase(std::next(it).base())); // Erase the element and update the iterator
+                neighbors.erase(std::next(it).base())); // Erase the element and update the iterator
         } else {
             ++it;
         }
@@ -130,7 +130,7 @@ int32_t NeighborInfoModule::runOnce()
     || IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE)
     || !config.has_network || !moduleConfig.has_mqtt;
 
-    if (transmitOverLora && !channels.isDefaultChannel(channels.getPrimaryIndex()) &&
+    if (transmitOverLora && (!channels.isDefaultChannel(channels.getPrimaryIndex()) || !RadioInterface::uses_default_frequency_slot) &&
         airTime->isTxAllowedChannelUtil(isImpoliteRole) && airTime->isTxAllowedAirUtil()) {
         sendNeighborInfo(NODENUM_BROADCAST, false);
     } else {
@@ -165,7 +165,7 @@ void NeighborInfoModule::alterReceivedProtobuf(meshtastic_MeshPacket &p, meshtas
 
     // Set updated last_sent_by_id to the payload of the to be flooded packet
     p.decoded.payload.size =
-            pb_encode_to_bytes(p.decoded.payload.bytes, sizeof(p.decoded.payload.bytes), &meshtastic_NeighborInfo_msg, n);
+        pb_encode_to_bytes(p.decoded.payload.bytes, sizeof(p.decoded.payload.bytes), &meshtastic_NeighborInfo_msg, n);
 }
 
 void NeighborInfoModule::resetNeighbors()
@@ -217,7 +217,6 @@ meshtastic_Neighbor *NeighborInfoModule::getOrCreateNeighbor(NodeNum originalSen
         neighbors.push_back(new_nbr);
     } else {
         // If we have too many neighbors, replace the oldest one
-        LOG_WARN("Neighbor DB is full, replace oldest neighbor");
         LOG_WARN("Neighbor DB is full, replace oldest neighbor");
         neighbors.erase(neighbors.begin());
         neighbors.push_back(new_nbr);
