@@ -7,7 +7,6 @@
 
 #include "../mesh/generated/meshtastic/telemetry.pb.h"
 #include "../TelemetrySensor.h"
-#include <time.h>
 
 #define REG_BATTERY_VOLTAGE 0x0
 #define REG_BATTERY_CURRENT 0x2

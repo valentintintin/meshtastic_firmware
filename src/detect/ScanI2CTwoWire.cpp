@@ -185,6 +185,7 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
 #else
 #ifdef SLAVE_SENSOR
         if (addr.address == MY_SLAVE_SENSOR_ADDR) {
+            LOG_DEBUG("MY_SLAVE_SENSOR test presence");
             i2cBus->write(REG_PING);
         }
 #endif
