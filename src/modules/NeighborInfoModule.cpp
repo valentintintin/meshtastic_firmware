@@ -45,7 +45,7 @@ NeighborInfoModule::NeighborInfoModule()
     if (moduleConfig.neighbor_info.enabled) {
         isPromiscuous = true; // Update neighbors from all packets
         setIntervalFromNow(Default::getConfiguredOrDefaultMs(moduleConfig.neighbor_info.update_interval,
-                                                             default_telemetry_broadcast_interval_secs));
+                                                             default_neighbor_info_broadcast_secs));
     } else {
         LOG_DEBUG("NeighborInfoModule is disabled");
         disable();
@@ -63,7 +63,7 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
     neighborInfo->node_id = my_node_id;
     neighborInfo->last_sent_by_id = my_node_id;
     neighborInfo->node_broadcast_interval_secs =
-        Default::getConfiguredOrDefault(moduleConfig.neighbor_info.update_interval, default_telemetry_broadcast_interval_secs);
+        Default::getConfiguredOrDefault(moduleConfig.neighbor_info.update_interval, default_neighbor_info_broadcast_secs);
 
     cleanUpNeighbors();
 
