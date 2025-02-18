@@ -90,8 +90,8 @@
 #include "modules/DropzoneModule.h"
 #endif
 
-#if USE_REPLYMODULE
-#include "ReplyModule.h"
+#if USE_TEXTCOMMANDMODULE
+#include "TextCommandModule.h"
 #endif
 
 /**
@@ -144,8 +144,8 @@ void setupModules()
         new PowerStressModule();
 #endif
         // Example: Put your module here
-#if USE_REPLYMODULE
-         new ReplyModule();
+#if USE_TEXTCOMMANDMODULE
+         new TextCommandModule();
 #endif
 #if (HAS_BUTTON || ARCH_PORTDUINO) && !MESHTASTIC_EXCLUDE_INPUTBROKER
         rotaryEncoderInterruptImpl1 = new RotaryEncoderInterruptImpl1();
