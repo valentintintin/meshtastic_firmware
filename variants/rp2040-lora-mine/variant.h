@@ -25,10 +25,11 @@
 #define NUM_OCV_POINTS 2
 #define OCV_ARRAY 12700, 11000
 
-#define HAS_CPU_SHUTDOWN 1
+#define HAS_CPU_SHUTDOWN 0 // We do not want to shutdown whereas we could
 #define USE_SX1262
 
- #define RP2040_SLOW_CLOCK
+//#define RP2040_SLOW_CLOCK
+//#define MY_SLOW_CLOCK
 
 #ifdef RP2040_SLOW_CLOCK
 // Redefine UART1 serial log output to avoid collision with UART0 for GPS.
