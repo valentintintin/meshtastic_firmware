@@ -36,7 +36,13 @@ int32_t TextCommandModule::runOnce() {
 }
 
 bool TextCommandModule::wantPacket(const meshtastic_MeshPacket *p) {
-    return MeshService::isTextPayload(p) && p->decoded.payload.bytes[0] == '!' && (isToUs(p) || isBroadcast(p->to));
+    return MeshService::isTextPayload(p)
+    && p->decoded.payload.size > 0
+    && p->decoded.payload.bytes[0] == '!'
+    && (
+        isToUs(p)
+        || isBroadcast(p->to) && IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER)
+    );
 }
 
 void TextCommandModule::alterReceived(meshtastic_MeshPacket &mp) {
@@ -74,10 +80,8 @@ bool TextCommandModule::processCommand(const char *command) {
     if (!parser.processCommand(command, tempBuffer)) {
         LOG_WARN("Failed to parse command so help");
 
-        if (IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER)) {
-            doPing(nullptr, tempBuffer);
-            strncat(tempBuffer, "\n\n!aide", MyCommandParser::MAX_RESPONSE_SIZE - strlen(tempBuffer));
-        }
+        doPing(nullptr, tempBuffer);
+        strncat(tempBuffer, "\n\n!aide", MyCommandParser::MAX_RESPONSE_SIZE - strlen(tempBuffer));
 
         return false;
     }

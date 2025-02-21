@@ -1,5 +1,5 @@
-#ifndef MESHTASTIC_MYSLAVESENSOR_H
-#define MESHTASTIC_MYSLAVESENSOR_H
+#ifndef MESHTASTIC_TEXTCOMMANDMODULE_H
+#define MESHTASTIC_TEXTCOMMANDMODULE_H
 
 #if USE_TEXTCOMMANDMODULE
 
@@ -8,7 +8,7 @@
 
 #include <CommandParser.h>
 
-#define THREAD_INTERVAL 15 * 1000 // 15 seconds
+#define THREAD_INTERVAL (15 * 1000) // 15 seconds
 
 //                  COMMANDS, COMMAND_ARGS, COMMAND_NAME_LENGTH, COMMAND_ARG_SIZE, COMMAND_HLP_LENGTH, RESPONSE_SIZE
 typedef CommandParser<32,       2,              16,                     200,                0,              200> MyCommandParser;
