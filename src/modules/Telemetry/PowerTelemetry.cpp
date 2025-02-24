@@ -69,8 +69,8 @@ int32_t PowerTelemetryModule::runOnce()
             if (max17048Sensor.hasSensor())
                 result = max17048Sensor.isInitialized() ? 0 : max17048Sensor.runOnce();
 #ifdef SLAVE_SENSOR
-            if (mySlavePowerSensor.hasSensor() && !mySlavePowerSensor.isInitialized())
-                result = mySlavePowerSensor.runOnce();
+            if (mySlavePowerSensor.hasSensor())
+                result = mySlavePowerSensor.isInitialized() ? 0 : mySlavePowerSensor.runOnce();
 #endif
         }
 
