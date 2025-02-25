@@ -282,6 +282,19 @@ NodeDB::NodeDB()
     }
 #endif
 
+#ifdef OVERRIDE_PUBLIC_KEY
+    const pb_byte_t pk[32] = OVERRIDE_PUBLIC_KEY;
+    memcpy(owner.public_key.bytes, pk, 32);
+    memcpy(config.security.public_key.bytes, pk, 32);
+    LOG_WARN("Override of the public key");
+#endif
+
+#ifdef OVERRIDE_PRIVATE_KEY
+    const pb_byte_t pvk[32] = OVERRIDE_PRIVATE_KEY;
+    memcpy(config.security.private_key.bytes, pvk, 32);
+    LOG_WARN("Override of the private key");
+#endif
+
     info->user = TypeConversions::ConvertToUserLite(owner);
     info->has_user = true;
 
