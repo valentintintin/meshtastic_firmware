@@ -127,11 +127,11 @@ int32_t NeighborInfoModule::runOnce()
 
     const bool transmitOverLora = moduleConfig.neighbor_info.transmit_over_lora
     || !HAS_NETWORKING
-    || IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE)
+    || isImpoliteRole
     || !config.has_network || !moduleConfig.has_mqtt;
 
-    if (transmitOverLora && (!channels.isDefaultChannel(channels.getPrimaryIndex()) || !RadioInterface::uses_default_frequency_slot) &&
-        airTime->isTxAllowedChannelUtil(isImpoliteRole) && airTime->isTxAllowedAirUtil()) {
+    if (transmitOverLora &&
+        airTime->isTxAllowedChannelUtil(!isImpoliteRole) && airTime->isTxAllowedAirUtil()) {
         sendNeighborInfo(NODENUM_BROADCAST, false);
     } else {
         sendNeighborInfo(NODENUM_BROADCAST_NO_LORA, false);

@@ -587,9 +587,8 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
 
         // Neighbor info module is disabled, ignore expensive neighbor info packets
         if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
-            p->decoded.portnum == meshtastic_PortNum_NEIGHBORINFO_APP &&
-            (!moduleConfig.has_neighbor_info || !moduleConfig.neighbor_info.enabled)) {
-            LOG_DEBUG("Neighbor info module is disabled, ignore neighbor packet");
+            p->decoded.portnum == meshtastic_PortNum_NEIGHBORINFO_APP) {
+            LOG_DEBUG("Ignore neighbor packet");
             cancelSending(p->from, p->id);
             skipHandle = true;
         }
