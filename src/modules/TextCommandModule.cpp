@@ -13,7 +13,7 @@
 
 Beacon TextCommandModule::beacon{};
 
-TextCommandModule::TextCommandModule() : SinglePortModule("reply", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("TextCommandModule") {
+TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("TextCommandModule") {
     parser.registerCommand("!ping", "", doPing);
     parser.registerCommand("!voisins", "", doNeighbors);
     parser.registerCommand("!noeuds", "", doNodes);
@@ -28,6 +28,8 @@ TextCommandModule::TextCommandModule() : SinglePortModule("reply", meshtastic_Po
 }
 
 int32_t TextCommandModule::runOnce() {
+    isRouter = IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER);
+
     if (const auto newDelay = sendBeacon()) {
         return newDelay;
     }
@@ -37,15 +39,16 @@ int32_t TextCommandModule::runOnce() {
 
 bool TextCommandModule::wantPacket(const meshtastic_MeshPacket *p) {
     return MeshService::isTextPayload(p)
-    && p->decoded.payload.size > 0
-    && p->decoded.payload.bytes[0] == '!'
-    && (
-        isToUs(p)
-        || isBroadcast(p->to) && IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER)
-    );
+           && isToUs(p)
+           || (
+               p->decoded.payload.bytes[0] == '!'
+               && isBroadcast(p->to)
+               && isRouter
+           );
 }
 
 void TextCommandModule::alterReceived(meshtastic_MeshPacket &mp) {
+    mp.want_ack = false;
     mp.decoded.want_response = true;
 }
 
@@ -60,12 +63,13 @@ meshtastic_MeshPacket *TextCommandModule::allocReply()
     LOG_INFO("Received message for reply from=0x%0x, id=%d, msg=%.*s", req.from, req.id, p.payload.size, reinterpret_cast<const char *>(p.payload.bytes));
 #endif
 
-    const auto reply = allocDataPacket();                 // Allocate a packet for sending
-    setReplyTo(reply, *currentRequest);
-    reply->channel = 0; // only by private message
-    reply->want_ack = false;
+    if (!processCommand(reinterpret_cast<const char *>(currentRequest->decoded.payload.bytes))) {
+        return nullptr;
+    }
 
-    processCommand(reinterpret_cast<const char *>(currentRequest->decoded.payload.bytes));
+    const auto reply = allocDataPacket();                 // Allocate a packet for sending
+    reply->priority = meshtastic_MeshPacket_Priority_RELIABLE;
+
     reply->decoded.payload.size = strlen(tempBuffer);
     memcpy(reply->decoded.payload.bytes, tempBuffer, reply->decoded.payload.size);
 
@@ -80,10 +84,12 @@ bool TextCommandModule::processCommand(const char *command) {
     if (!parser.processCommand(command, tempBuffer)) {
         LOG_WARN("Failed to parse command so help");
 
+        if (!isRouter) {
+            return false;
+        }
+
         doPing(nullptr, tempBuffer);
         strncat(tempBuffer, "\n\n!aide", MyCommandParser::MAX_RESPONSE_SIZE - strlen(tempBuffer));
-
-        return false;
     }
 
     return true;
@@ -123,7 +129,7 @@ void TextCommandModule::doPing(MyCommandParser::Argument *args, char *response) 
     const auto nbHops = currentRequest->hop_start - currentRequest->hop_limit;
 
     if (nbHops == 0) {
-        snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Direct. RSSI: %d SNR: %.2f", currentRequest->rx_rssi, currentRequest->rx_snr);
+        snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Direct. SNR: %.2f RSSI: %d", currentRequest->rx_snr, currentRequest->rx_rssi);
     } else {
         snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Sauts: %d/%d", nbHops, currentRequest->hop_limit);
     }
@@ -232,7 +238,7 @@ void TextCommandModule::doBeacon(MyCommandParser::Argument *args, char *response
     const auto nodeIdOrName = args[0].asString;
     const auto node = findNode(nodeIdOrName);
 
-    if (!node) {
+    if (!node || !node->has_user || node->user.public_key.size == 0) {
         beacon.to = nullptr;
         snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "%s pas trouvé", nodeIdOrName);
         return;
@@ -256,12 +262,19 @@ void TextCommandModule::listNodes(char *buffer, int hoursLastHeard, bool onlyNei
     const auto maxTime = 3600 * hoursLastHeard;
 
     for (const auto& node : *nodeDB->meshNodes) {
-        if (node.num == nodeDB->getNodeNum()) continue;
-        if (strlen(buffer) >= sizeof(buffer) - (onlyNeighbors ? 5 : 10)) return;
-        if (now - node.last_heard > maxTime) {
-            LOG_DEBUG("Node 0x%x not heard for %d hours", node.num, hoursLastHeard);
+        if (node.num == nodeDB->getNodeNum()) {
             continue;
         }
+
+        if (strlen(buffer) >= sizeof(buffer) - (onlyNeighbors ? 5 : 10)) {
+            return;
+        }
+
+        if (node.last_heard > 0 && now - node.last_heard > maxTime) {
+            LOG_DEBUG("Node 0x%x not heard for %d hours : %d", node.num, hoursLastHeard, node.last_heard);
+            continue;
+        }
+
         if (onlyNeighbors && (!node.has_hops_away || node.hops_away != 0)) {
             LOG_DEBUG("Node 0x%x not a direct neighbor", node.num);
             continue;

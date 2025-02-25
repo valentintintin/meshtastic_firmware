@@ -32,6 +32,7 @@ class TextCommandModule : public SinglePortModule, public Observable<const mesht
 private:
     char tempBuffer[MyCommandParser::MAX_RESPONSE_SIZE] = {};
     MyCommandParser parser;
+    bool isRouter;
 
     bool processCommand(const char *command);
     uint64_t sendBeacon();
