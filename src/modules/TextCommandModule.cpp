@@ -2,6 +2,7 @@
 
 #include "configuration.h"
 #include "MeshService.h"
+#include "Channels.h"
 
 #include <cstring>
 #include <cassert>
@@ -11,7 +12,11 @@
 
 #include "TextCommandModule.h"
 
+TextCommandModule* TextCommandModule::instance = nullptr;
 Beacon TextCommandModule::beacon{};
+bool TextCommandModule::shouldReloadConfig = false;
+meshtastic_Config_LoRaConfig_ModemPreset TextCommandModule::oldLoRaModemPreset;
+char TextCommandModule::oldPrimaryChannelName[12];
 
 TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("TextCommandModule") {
     parser.registerCommand("!ping", "", doPing);
@@ -23,14 +28,36 @@ TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtas
     parser.registerCommand("!gpioGet", "u", doGpioGet);
     parser.registerCommand("!gpioGetAdc", "u", doGpioGetAdc);
     parser.registerCommand("!set", "ss", doSetConfig);
+    parser.registerCommand("!msg", "sss", doSendMessage);
     parser.registerCommand("!aide", "", doHelp);
     parser.registerCommand("!help", "", doHelp);
+
+    instance = this;
 }
 
 int32_t TextCommandModule::runOnce() {
     isRouter = IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER);
 
-    if (const auto newDelay = sendBeacon()) {
+    const auto txQueueStatus = router->getQueueStatus();
+    if (shouldReloadConfig && txQueueStatus.free == txQueueStatus.maxlen) {
+        LOG_INFO("We need to reload config");
+
+        if (config.lora.modem_preset != oldLoRaModemPreset) {
+            LOG_WARN("Set LoRa preset to %u", oldLoRaModemPreset);
+            config.lora.modem_preset = oldLoRaModemPreset;
+            service->configChanged.notifyObservers(nullptr);
+        }
+
+        auto channel = channels.getByIndex(channels.getPrimaryIndex());
+        if (strcasecmp(channel.settings.name, oldPrimaryChannelName) != 0) {
+            LOG_WARN("Set primary channel name to %s", oldPrimaryChannelName);
+            strncpy(channel.settings.name, oldPrimaryChannelName, 12);
+            channels.setChannel(channel);
+            channels.onConfigChanged();
+        }
+
+        shouldReloadConfig = false;
+    } else if (const auto newDelay = sendBeacon()) {
         return newDelay;
     }
 
@@ -47,42 +74,30 @@ bool TextCommandModule::wantPacket(const meshtastic_MeshPacket *p) {
            );
 }
 
-void TextCommandModule::alterReceived(meshtastic_MeshPacket &mp) {
-    mp.want_ack = false;
-    mp.decoded.want_response = true;
-}
-
-meshtastic_MeshPacket *TextCommandModule::allocReply()
+ProcessMessage TextCommandModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
-    assert(currentRequest); // should always be !NULL
-
-#ifdef DEBUG_PORT
-    const auto req = *currentRequest;
-    auto &p = req.decoded;
-    // The incoming message is in p.payload
-    LOG_INFO("Received message for reply from=0x%0x, id=%d, msg=%.*s", req.from, req.id, p.payload.size, reinterpret_cast<const char *>(p.payload.bytes));
-#endif
+    LOG_INFO("Received message for reply from=0x%0x, id=%d, msg=%.*s", mp.from, mp.id, mp.decoded.payload.size, reinterpret_cast<const char *>(mp.decoded.payload.bytes));
 
     if (!processCommand(reinterpret_cast<const char *>(currentRequest->decoded.payload.bytes))) {
-        return nullptr;
+        return ProcessMessage::CONTINUE;
     }
 
     const auto reply = allocDataPacket();                 // Allocate a packet for sending
-    reply->priority = meshtastic_MeshPacket_Priority_RELIABLE;
+    setReplyTo(reply, mp);
 
     reply->decoded.payload.size = strlen(tempBuffer);
     memcpy(reply->decoded.payload.bytes, tempBuffer, reply->decoded.payload.size);
 
-#ifdef DEBUG_PORT
-    LOG_INFO("Reply for command from=0x%0x, id=%d, msg=%.*s", req.from, req.id, reply->decoded.payload.size, reinterpret_cast<const char *>(reply->decoded.payload.bytes));
-#endif
+    LOG_INFO("Reply for command from=0x%0x, id=%d, msg=%.*s", reply->from, reply->id, reply->decoded.payload.size, reinterpret_cast<const char *>(reply->decoded.payload.bytes));
 
-    return reply;
+    service->sendToMesh(reply);
+
+    return ProcessMessage::CONTINUE;
 }
 
 bool TextCommandModule::processCommand(const char *command) {
     if (!parser.processCommand(command, tempBuffer)) {
-        LOG_WARN("Failed to parse command so help");
+        LOG_WARN("Failed to parse command %s", command);
 
         if (!isRouter) {
             return false;
@@ -105,16 +120,69 @@ uint64_t TextCommandModule::sendBeacon() {
     meshtastic_MeshPacket *p = allocDataPacket();
     p->to = beacon.to->num;
     p->channel = 0;
-    p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
     p->hop_limit = beacon.to->has_hops_away ? beacon.to->hops_away : config.lora.hop_limit;
 
     snprintf(tempBuffer, MyCommandParser::MAX_RESPONSE_SIZE, "!ping %llu\nSNR: %.2f", beacon.nbTxLeft, beacon.to->snr);
+
     p->decoded.payload.size = strlen(tempBuffer);
     memcpy(p->decoded.payload.bytes, tempBuffer, p->decoded.payload.size);
 
-    service->sendToMesh(p, RX_SRC_LOCAL, true);
+    service->sendToMesh(p);
 
     return THREAD_INTERVAL * (beacon.to->hops_away + 1);
+}
+
+bool TextCommandModule::sendMessage(char modemPresetName[2], char channelName[12], char message[200]) {
+    if (!router) {
+        return false;
+    }
+
+    if (beacon.nbTxLeft > 0) {
+        return false;
+    }
+
+    auto modemPreset = config.lora.modem_preset;
+    auto channel = channels.getByIndex(channels.getPrimaryIndex());
+
+    oldLoRaModemPreset = config.lora.modem_preset;
+    strncpy(oldPrimaryChannelName, channel.settings.name, 12);
+
+    LOG_INFO("Want to send message %s with preset %s on channel %s", message, modemPresetName, channelName);
+
+    if (strcasecmp(channel.settings.name, channelName) != 0) {
+        LOG_WARN("Set primary channel name to %s", channelName);
+        strncpy(channel.settings.name, channelName, 12);
+        channels.setChannel(channel);
+        channels.onConfigChanged();
+        shouldReloadConfig = true;
+    }
+
+    if (strcasecmp(modemPresetName, "LF") == 0) {
+        modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST;
+    } else if (strcasecmp(modemPresetName, "LM") == 0) {
+        modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_MODERATE;
+    }
+
+    if (config.lora.modem_preset != modemPreset) {
+        LOG_WARN("Change LoRa preset to %u", modemPreset);
+        config.lora.modem_preset = modemPreset;
+        service->configChanged.notifyObservers(nullptr);
+        shouldReloadConfig = true;
+    }
+
+    const auto p = router->allocForSending();
+    p->channel = channel.index;
+    p->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
+    p->decoded.payload.size = strlen(message);
+    memcpy(p->decoded.payload.bytes, message, p->decoded.payload.size);
+
+    router->send(p);
+
+    if (shouldReloadConfig) {
+        setInterval(THREAD_INTERVAL);
+    }
+
+    return true;
 }
 
 void TextCommandModule::doPing(MyCommandParser::Argument *args, char *response) {
@@ -211,13 +279,17 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
         return;
     }
 
-    auto changes = SEGMENT_CONFIG;
+    const auto changes = SEGMENT_CONFIG;
     bool ok = true;
-    bool shouldReboot = false;
+    const bool shouldReboot = false;
     LOG_INFO("Set %s to %s", key, value);
 
-    if (strcmp(key, "tx") == 0) {
+    if (strcasecmp(key, "tx") == 0) {
         config.lora.tx_enabled = value[0] == '1';
+    } else if (strcasecmp(key, "preset") == 0) {
+        config.lora.modem_preset = static_cast<meshtastic_Config_LoRaConfig_ModemPreset>(strtoul(value, nullptr, 0));
+    } else if (strcasecmp(key, "reset") == 0) {
+        nodeDB->resetRadioConfig(strcmp(key, "all") == 0);
     } else {
         ok = false;
         snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "KO %s not found", key);
@@ -255,6 +327,14 @@ void TextCommandModule::doBeacon(MyCommandParser::Argument *args, char *response
         beacon.nbTxLeft);
 
     LOG_DEBUG("Beacon OK %s", response);
+}
+
+void TextCommandModule::doSendMessage(MyCommandParser::Argument *args, char *response) {
+    if (instance != nullptr && instance->sendMessage(args[0].asString, args[1].asString, args[2].asString)) {
+        strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
+    } else {
+        strncpy(response, "KO", MyCommandParser::MAX_RESPONSE_SIZE);
+    }
 }
 
 void TextCommandModule::listNodes(char *buffer, int hoursLastHeard, bool onlyNeighbors) {
