@@ -67,6 +67,8 @@ class ScanI2C
         INA226,
         NXP_SE050,
         DFROBOT_RAIN,
+        DPS310,
+        LTR390UV,
         MY_SLAVE_SENSOR
     } DeviceType;
 
