@@ -15,6 +15,8 @@
 
 #define MAGIC_USB_BATTERY_LEVEL 101
 
+DeviceTelemetryModule *deviceTelemetryModule;
+
 int32_t DeviceTelemetryModule::runOnce()
 {
     refreshUptime();

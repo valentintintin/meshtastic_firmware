@@ -52,6 +52,7 @@ private:
     static void doGpioGetAdc(MyCommandParser::Argument *args, char *response);
     static void doSetConfig(MyCommandParser::Argument *args, char *response);
     static void doBeacon(MyCommandParser::Argument *args, char *response);
+    static void doAsk(MyCommandParser::Argument *args, char *response);
     static void doSendMessage(MyCommandParser::Argument *args, char *response);
 
     static void listNodes(char *buffer, int hoursLastHeard, bool onlyNeighbors);

@@ -194,10 +194,10 @@ void setupModules()
         cannedMessageModule = new CannedMessageModule();
 #endif
 #if HAS_TELEMETRY
-        new DeviceTelemetryModule();
+        deviceTelemetryModule = new DeviceTelemetryModule();
 #endif
 #if HAS_SENSOR && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-        new EnvironmentTelemetryModule();
+        environmentTelemetryModule = new EnvironmentTelemetryModule();
         if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_PMSA003I].first > 0) {
             new AirQualityTelemetryModule();
         }
@@ -209,7 +209,7 @@ void setupModules()
 #endif
 #endif
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_POWER_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-        new PowerTelemetryModule();
+        powerTelemetryModule = new PowerTelemetryModule();
 #endif
 #if (defined(ARCH_ESP32) || defined(ARCH_NRF52) || defined(ARCH_RP2040)) && !defined(CONFIG_IDF_TARGET_ESP32S2) &&               \
     !defined(CONFIG_IDF_TARGET_ESP32C3)
@@ -244,7 +244,7 @@ void setupModules()
         adminModule = new AdminModule();
 #endif
 #if HAS_TELEMETRY
-        new DeviceTelemetryModule();
+        deviceTelemetryModule = new DeviceTelemetryModule();
 #endif
 #if !MESHTASTIC_EXCLUDE_TRACEROUTE
         traceRouteModule = new TraceRouteModule();

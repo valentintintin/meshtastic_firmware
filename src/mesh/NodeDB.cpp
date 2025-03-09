@@ -590,6 +590,9 @@ void NodeDB::installDefaultConfig(bool preserveKey = false)
 #else
     config.device.disable_triple_click = true;
 #endif
+#ifdef USERPREFS_DEVICE_ROLE
+    config.device.role = USERPREFS_DEVICE_ROLE;
+#endif
 #if defined(USERPREFS_CONFIG_GPS_MODE)
     config.position.gps_mode = USERPREFS_CONFIG_GPS_MODE;
 #elif !HAS_GPS || GPS_DEFAULT_NOT_PRESENT

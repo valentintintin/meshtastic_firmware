@@ -21,6 +21,8 @@
 #include "graphics/ScreenFonts.h"
 #include <Throttle.h>
 
+PowerTelemetryModule *powerTelemetryModule;
+
 int32_t PowerTelemetryModule::runOnce()
 {
     if (sleepOnNextExecution == true) {

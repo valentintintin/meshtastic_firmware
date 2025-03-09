@@ -1,3 +1,9 @@
+#include "NeighborInfoModule.h"
+#include "NodeInfoModule.h"
+#include "PositionModule.h"
+#include "Telemetry/DeviceTelemetry.h"
+#include "Telemetry/EnvironmentTelemetry.h"
+#include "Telemetry/PowerTelemetry.h"
 #if USE_TEXTCOMMANDMODULE
 
 #include "configuration.h"
@@ -28,6 +34,7 @@ TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtas
     parser.registerCommand("!gpioGet", "u", doGpioGet);
     parser.registerCommand("!gpioGetAdc", "u", doGpioGetAdc);
     parser.registerCommand("!set", "ss", doSetConfig);
+    parser.registerCommand("!ask", "s", doAsk);
     parser.registerCommand("!msg", "sss", doSendMessage);
     parser.registerCommand("!aide", "", doHelp);
     parser.registerCommand("!help", "", doHelp);
@@ -161,6 +168,16 @@ bool TextCommandModule::sendMessage(char modemPresetName[2], char channelName[12
         modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST;
     } else if (strcasecmp(modemPresetName, "LM") == 0) {
         modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_MODERATE;
+    } else if (strcasecmp(modemPresetName, "LS") == 0) {
+        modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_SLOW;
+    } else if (strcasecmp(modemPresetName, "MF") == 0) {
+        modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_FAST;
+    } else if (strcasecmp(modemPresetName, "MS") == 0) {
+        modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_MEDIUM_SLOW;
+    } else if (strcasecmp(modemPresetName, "SF") == 0) {
+        modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_SHORT_FAST;
+    } else if (strcasecmp(modemPresetName, "SS") == 0) {
+        modemPreset = meshtastic_Config_LoRaConfig_ModemPreset_SHORT_SLOW;
     }
 
     if (config.lora.modem_preset != modemPreset) {
@@ -244,7 +261,7 @@ void TextCommandModule::doSearchNode(MyCommandParser::Argument *args, char *resp
 }
 
 void TextCommandModule::doHelp(MyCommandParser::Argument *args, char *response) {
-    snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "Aide :\n!ping\n!voisins\n!noeuds\n!noeud NOM_COURT\n!balise NOM_COURT NB_FOIS");
+    snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "!ping\n!voisins\n!noeuds\n!noeud NOM_COURT\n!balise NOM_COURT NB_FOIS\n!ask nodeinfo|position|voisins|telem|meteo|power\n!msg (LF|LM) CANAL Message");
 }
 
 void TextCommandModule::doGpioSet(MyCommandParser::Argument *args, char *response) {
@@ -279,7 +296,7 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
         return;
     }
 
-    const auto changes = SEGMENT_CONFIG;
+    auto changes = SEGMENT_CONFIG;
     bool ok = true;
     const bool shouldReboot = false;
     LOG_INFO("Set %s to %s", key, value);
@@ -288,6 +305,26 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
         config.lora.tx_enabled = value[0] == '1';
     } else if (strcasecmp(key, "preset") == 0) {
         config.lora.modem_preset = static_cast<meshtastic_Config_LoRaConfig_ModemPreset>(strtoul(value, nullptr, 0));
+    } else if (strcasecmp(key, "neighborInfo") == 0) {
+        moduleConfig.neighbor_info.enabled = value[0] == '1';
+        moduleConfig.neighbor_info.transmit_over_lora = true;
+        changes = SEGMENT_MODULECONFIG;
+    } else if (strcasecmp(key, "admin") == 0) {
+        const auto node = findNode(value);
+
+        if (node != nullptr) {
+            uint8_t adminKeyIndex = config.security.admin_key_count;
+            if (config.security.admin_key_count >= 3) {
+                adminKeyIndex = 2; // On remplace la dernière clé
+            }
+
+            memcpy(config.security.admin_key[adminKeyIndex].bytes, node->user.public_key.bytes, node->user.public_key.size);
+            config.security.admin_key[adminKeyIndex].size = node->user.public_key.size;
+            config.security.admin_key_count = adminKeyIndex + 1;
+        } else {
+            ok = false;
+            snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "KO %s not found", value);
+        }
     } else if (strcasecmp(key, "reset") == 0) {
         nodeDB->resetRadioConfig(strcmp(key, "all") == 0);
     } else {
@@ -329,6 +366,49 @@ void TextCommandModule::doBeacon(MyCommandParser::Argument *args, char *response
     LOG_DEBUG("Beacon OK %s", response);
 }
 
+void TextCommandModule::doAsk(MyCommandParser::Argument *args, char *response) {
+    const auto what = args[0].asString;
+
+#if !MESHTASTIC_EXCLUDE_NODEINFO
+    if (strcasecmp(what, "nodeinfo") == 0) {
+        nodeInfoModule->sendOurNodeInfo();
+    }
+#else
+    if (false) { // only for others elseif }
+#endif
+#if !MESHTASTIC_EXCLUDE_GPS
+    else if (strcasecmp(what, "position") == 0) {
+        positionModule->sendOurPosition();
+    }
+#endif
+#if !MESHTASTIC_EXCLUDE_NEIGHBORINFO
+    else if (strcasecmp(what, "voisins") == 0 && moduleConfig.neighbor_info.enabled) {
+        neighborInfoModule->sendNeighborInfo();
+    }
+#endif
+#if HAS_TELEMETRY
+    else if (strcasecmp(what, "telem") == 0) {
+        deviceTelemetryModule->sendTelemetry();
+    }
+#if !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
+    else if (strcasecmp(what, "meteo") == 0) {
+        environmentTelemetryModule->sendTelemetry();
+    }
+#if !MESHTASTIC_EXCLUDE_POWER_TELEMETRY
+    else if (strcasecmp(what, "power") == 0) {
+        powerTelemetryModule->sendTelemetry();
+    }
+#endif
+#endif
+#endif
+    else {
+        strncpy(response, "KO pas compris", MyCommandParser::MAX_RESPONSE_SIZE);
+        return;
+    }
+
+    strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
+}
+
 void TextCommandModule::doSendMessage(MyCommandParser::Argument *args, char *response) {
     if (instance != nullptr && instance->sendMessage(args[0].asString, args[1].asString, args[2].asString)) {
         strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
@@ -346,7 +426,7 @@ void TextCommandModule::listNodes(char *buffer, int hoursLastHeard, bool onlyNei
             continue;
         }
 
-        if (strlen(buffer) >= sizeof(buffer) - (onlyNeighbors ? 5 : 10)) {
+        if (strlen(buffer) + (onlyNeighbors ? 5 : 10) >= sizeof(buffer)) {
             return;
         }
 
