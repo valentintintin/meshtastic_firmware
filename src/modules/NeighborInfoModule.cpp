@@ -131,7 +131,7 @@ int32_t NeighborInfoModule::runOnce()
     || !config.has_network || !moduleConfig.has_mqtt;
 
     if (transmitOverLora &&
-        airTime->isTxAllowedChannelUtil(!isImpoliteRole) && airTime->isTxAllowedAirUtil()) {
+        airTime->isTxAllowedChannelUtil(!isImpoliteRole) && airTime->isTxAllowedAirUtil(!isImpoliteRole)) {
         sendNeighborInfo(NODENUM_BROADCAST, false);
     } else {
         sendNeighborInfo(NODENUM_BROADCAST_NO_LORA, false);

@@ -14,6 +14,8 @@
 // txd = 8
 // rxd = 9
 
+//#define MAX_NUM_NODES 250
+
 #define EXT_NOTIFY_OUT 22
 #define BUTTON_PIN -1 // Pin 17 used for antenna switching via DIO4
 
@@ -30,7 +32,6 @@
 
 #define RP2040_SLOW_CLOCK
 #define MY_SLOW_CLOCK
-//#define FLOODING_CHANCE
 
 #ifdef RP2040_SLOW_CLOCK
 // Redefine UART1 serial log output to avoid collision with UART0 for GPS.

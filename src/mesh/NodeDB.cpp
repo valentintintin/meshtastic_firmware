@@ -580,8 +580,11 @@ void NodeDB::installDefaultConfig(bool preserveKey = false)
 #else
     config.device.disable_triple_click = true;
 #endif
-#ifdef USERPREFS_DEVICE_ROLE
-    config.device.role = USERPREFS_DEVICE_ROLE;
+#ifdef USERPREFS_CONFIG_DEVICE_ROLE
+    config.device.role = USERPREFS_CONFIG_DEVICE_ROLE;
+#endif
+#ifdef USERPREFS_DEVICE_REBROADCAST_MODE
+    config.device.rebroadcast_mode = USERPREFS_DEVICE_REBROADCAST_MODE;
 #endif
 #if defined(USERPREFS_CONFIG_GPS_MODE)
     config.position.gps_mode = USERPREFS_CONFIG_GPS_MODE;
@@ -780,6 +783,21 @@ void NodeDB::installDefaultModuleConfig()
 
     moduleConfig.has_neighbor_info = true;
     moduleConfig.neighbor_info.enabled = false;
+#ifdef USERPREFS_NEIGHBOR_INFO_ENABLED
+    moduleConfig.neighbor_info.enabled = USERPREFS_NEIGHBOR_INFO_ENABLED;
+#endif
+
+#ifdef USERPREFS_TELEMETRY_ENVIRONMENT_ENABLED
+    moduleConfig.telemetry.environment_measurement_enabled = USERPREFS_TELEMETRY_ENVIRONMENT_ENABLED;
+#endif
+
+#ifdef USERPREFS_TELEMETRY_AIR_QUALITY_ENABLED
+    moduleConfig.telemetry.air_quality_enabled = USERPREFS_TELEMETRY_AIR_QUALITY_ENABLED;
+#endif
+
+#ifdef USERPREFS_TELEMETRY_POWER_ENABLED
+    moduleConfig.telemetry.power_measurement_enabled = USERPREFS_TELEMETRY_POWER_ENABLED;
+#endif
 
     moduleConfig.has_detection_sensor = true;
     moduleConfig.detection_sensor.enabled = false;
@@ -792,6 +810,25 @@ void NodeDB::installDefaultModuleConfig()
     moduleConfig.ambient_lighting.red = (myNodeInfo.my_node_num & 0xFF0000) >> 16;
     moduleConfig.ambient_lighting.green = (myNodeInfo.my_node_num & 0x00FF00) >> 8;
     moduleConfig.ambient_lighting.blue = myNodeInfo.my_node_num & 0x0000FF;
+
+#ifdef USERPREFS_SERIAL_ENABLED
+    moduleConfig.serial.enabled = USERPREFS_SERIAL_ENABLED;
+#endif
+#ifdef USERPREFS_SERIAL_BAUD
+    moduleConfig.serial.baud = USERPREFS_SERIAL_BAUD;
+#endif
+#ifdef USERPREFS_SERIAL_MODE
+    moduleConfig.serial.mode = USERPREFS_SERIAL_MODE;
+#endif
+#ifdef USERPREFS_SERIAL_OVERRIDE_CONSOLE
+    moduleConfig.serial.override_console_serial_port = USERPREFS_SERIAL_OVERRIDE_CONSOLE;
+#endif
+#ifdef USERPREFS_SERIAL_RXD
+    moduleConfig.serial.rxd = USERPREFS_SERIAL_RXD;
+#endif
+#ifdef USERPREFS_SERIAL_TXD
+    moduleConfig.serial.txd = USERPREFS_SERIAL_TXD;
+#endif
 
     initModuleConfigIntervals();
 }

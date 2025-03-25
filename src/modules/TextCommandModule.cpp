@@ -34,10 +34,9 @@ TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtas
     parser.registerCommand("!gpioGet", "u", doGpioGet);
     parser.registerCommand("!gpioGetAdc", "u", doGpioGetAdc);
     parser.registerCommand("!set", "ss", doSetConfig);
+    parser.registerCommand("!get", "s", doGet);
     parser.registerCommand("!ask", "s", doAsk);
     parser.registerCommand("!msg", "sss", doSendMessage);
-    parser.registerCommand("!aide", "", doHelp);
-    parser.registerCommand("!help", "", doHelp);
 
     instance = this;
 }
@@ -83,6 +82,8 @@ bool TextCommandModule::wantPacket(const meshtastic_MeshPacket *p) {
 
 ProcessMessage TextCommandModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
+    memset(tempBuffer, '\0', MyCommandParser::MAX_RESPONSE_SIZE);
+
     LOG_INFO("Received message for reply from=0x%0x, id=%d, msg=%.*s", mp.from, mp.id, mp.decoded.payload.size, reinterpret_cast<const char *>(mp.decoded.payload.bytes));
 
     if (!processCommand(reinterpret_cast<const char *>(currentRequest->decoded.payload.bytes))) {
@@ -111,7 +112,6 @@ bool TextCommandModule::processCommand(const char *command) {
         }
 
         doPing(nullptr, tempBuffer);
-        strncat(tempBuffer, "\n\n!aide", MyCommandParser::MAX_RESPONSE_SIZE - strlen(tempBuffer));
     }
 
     return true;
@@ -203,7 +203,10 @@ bool TextCommandModule::sendMessage(char modemPresetName[2], char channelName[12
 }
 
 void TextCommandModule::doPing(MyCommandParser::Argument *args, char *response) {
-    assert(currentRequest); // should always be !NULL
+    if (currentRequest == nullptr) {
+        strncpy(response, "Pong KO", MyCommandParser::MAX_RESPONSE_SIZE);
+        return;
+    }
 
     strncpy(response, "Pong !\n\n", MyCommandParser::MAX_RESPONSE_SIZE);
 
@@ -217,6 +220,19 @@ void TextCommandModule::doPing(MyCommandParser::Argument *args, char *response) 
         snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Direct. SNR: %.2f RSSI: %d", currentRequest->rx_snr, currentRequest->rx_rssi);
     } else {
         snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Sauts: %d/%d", nbHops, currentRequest->hop_limit);
+        if (currentRequest->relay_node != 0 || currentRequest->next_hop != 0) {
+            const auto relayNode = findNeighborNodeFromLastByte(currentRequest->relay_node);
+
+            if (relayNode != nullptr) {
+                snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "\nVia: !%x", relayNode->num);
+
+                if (relayNode->has_user) {
+                    snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), " -> %s\n%s", relayNode->user.short_name, relayNode->user.long_name);
+                }
+            } else {
+                snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "\nVia: 0x%x", currentRequest->relay_node);
+            }
+        }
     }
 }
 
@@ -258,10 +274,20 @@ void TextCommandModule::doSearchNode(MyCommandParser::Argument *args, char *resp
             snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Sauts: %d", node->hops_away);
         }
     }
-}
 
-void TextCommandModule::doHelp(MyCommandParser::Argument *args, char *response) {
-    snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "!ping\n!voisins\n!noeuds\n!noeud NOM_COURT\n!balise NOM_COURT NB_FOIS\n!ask nodeinfo|position|voisins|telem|meteo|power\n!msg (LF|LM) CANAL Message");
+    if (node->next_hop > 0) {
+        const auto nextHop = findNeighborNodeFromLastByte(node->next_hop);
+
+        if (nextHop != nullptr) {
+            snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "\nVia: !%x", nextHop->num);
+
+            if (nextHop->has_user) {
+                snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), " -> %s\n%s", nextHop->user.short_name, nextHop->user.long_name);
+            }
+        } else {
+            snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "\nVia: 0x%x", node->next_hop);
+        }
+    }
 }
 
 void TextCommandModule::doGpioSet(MyCommandParser::Argument *args, char *response) {
@@ -298,17 +324,29 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
 
     auto changes = SEGMENT_CONFIG;
     bool ok = true;
-    const bool shouldReboot = false;
+    bool shouldReboot = false;
     LOG_INFO("Set %s to %s", key, value);
 
     if (strcasecmp(key, "tx") == 0) {
         config.lora.tx_enabled = value[0] == '1';
     } else if (strcasecmp(key, "preset") == 0) {
         config.lora.modem_preset = static_cast<meshtastic_Config_LoRaConfig_ModemPreset>(strtoul(value, nullptr, 0));
+    } else if (strcasecmp(key, "primaryChannel") == 0) {
+        auto channel = channels.getByIndex(channels.getPrimaryIndex());
+        if (strcasecmp(channel.settings.name, value) != 0) {
+            LOG_WARN("Set primary channel name to %s", value);
+            strncpy(channel.settings.name, value, 12);
+            channels.setChannel(channel);
+            channels.onConfigChanged();
+            changes = SEGMENT_CHANNELS;
+        }
+    } else if (strcasecmp(key, "power") == 0) {
+        config.lora.tx_power = static_cast<int8_t>(strtol(value, nullptr, 0));
     } else if (strcasecmp(key, "neighborInfo") == 0) {
         moduleConfig.neighbor_info.enabled = value[0] == '1';
         moduleConfig.neighbor_info.transmit_over_lora = true;
         changes = SEGMENT_MODULECONFIG;
+        shouldReboot = true;
     } else if (strcasecmp(key, "admin") == 0) {
         const auto node = findNode(value);
 
@@ -321,12 +359,37 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
             memcpy(config.security.admin_key[adminKeyIndex].bytes, node->user.public_key.bytes, node->user.public_key.size);
             config.security.admin_key[adminKeyIndex].size = node->user.public_key.size;
             config.security.admin_key_count = adminKeyIndex + 1;
+            shouldReboot = true;
+        } else {
+            ok = false;
+            snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "KO %s not found", value);
+        }
+    }  else if (strcasecmp(key, "remove") == 0) {
+        const auto node = findNode(value);
+
+        if (node != nullptr) {
+            nodeDB->removeNodeByNum(node->num);
         } else {
             ok = false;
             snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "KO %s not found", value);
         }
     } else if (strcasecmp(key, "reset") == 0) {
-        nodeDB->resetRadioConfig(strcmp(key, "all") == 0);
+        nodeDB->resetRadioConfig(strcmp(value, "all") == 0);
+        shouldReboot = true;
+    } else if (strcasecmp(key, "name") == 0) {
+        if (strcmp(owner.long_name, value) == 0) {
+            strncpy(owner.long_name, value, sizeof(owner.long_name));
+            service->reloadOwner();
+            service->reloadConfig(SEGMENT_DEVICESTATE | SEGMENT_NODEDATABASE);
+            shouldReboot = true;
+        }
+    } else if (strcasecmp(key, "shortName") == 0) {
+        if (strcmp(owner.short_name, value) == 0) {
+            strncpy(owner.short_name, value, sizeof(owner.short_name));
+            service->reloadOwner();
+            service->reloadConfig(SEGMENT_DEVICESTATE | SEGMENT_NODEDATABASE);
+            shouldReboot = true;
+        }
     } else {
         ok = false;
         snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "KO %s not found", key);
@@ -401,7 +464,35 @@ void TextCommandModule::doAsk(MyCommandParser::Argument *args, char *response) {
 #endif
 #endif
 #endif
-    else {
+#if defined(ARCH_NRF52) || defined(ARCH_RP2040)
+    else if (strcasecmp(what, "dfu") == 0) {
+        LOG_INFO("Client requesting to enter DFU mode");
+        enterDfuMode();
+    }
+#endif
+    else if (strcasecmp(what, "reboot") == 0) {
+        screen->startAlert("Rebooting...");
+        rebootAtMsec = millis() + 5000;
+    } else {
+        strncpy(response, "KO pas compris", MyCommandParser::MAX_RESPONSE_SIZE);
+        return;
+    }
+
+    strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
+}
+
+void TextCommandModule::doGet(MyCommandParser::Argument *args, char *response) {
+    const auto what = args[0].asString;
+
+    if (strcasecmp(what, "time") == 0) {
+        const time_t epochTimeT = getTime();
+        const tm ts = *localtime(&epochTimeT);
+        snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "%d-%d-%dT%d:%d:%dZ (%lu)",
+                ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec, epochTimeT);
+    } else if (strcasecmp(what, "primaryChannel") == 0) {
+        auto channel = channels.getByIndex(channels.getPrimaryIndex());
+        strncpy(response, channel.settings.name, MyCommandParser::MAX_RESPONSE_SIZE);
+    } else {
         strncpy(response, "KO pas compris", MyCommandParser::MAX_RESPONSE_SIZE);
         return;
     }
@@ -466,7 +557,21 @@ const _meshtastic_NodeInfoLite *TextCommandModule::findNode(char *nodeIdOrName) 
         const auto& node = nodeDB->meshNodes->at(i);
 
         if ((node.has_user && strcasecmp(node.user.short_name, nodeIdOrName) == 0)
-            || (nodeIdNum > 0 && nodeIdNum == static_cast<uint16_t>(node.num & 0xFFFF))
+            || (nodeIdNum > 0 && (nodeIdNum == node.num || nodeIdNum == static_cast<uint16_t>(node.num & 0xFFFF)))
+        ) {
+            return &node;
+        }
+    }
+
+    return nullptr;
+}
+
+const _meshtastic_NodeInfoLite *TextCommandModule::findNeighborNodeFromLastByte(uint8_t lastByte) {
+    for (int i = 0; i < nodeDB->numMeshNodes; i++) {
+        const auto& node = nodeDB->meshNodes->at(i);
+
+        if (node.has_hops_away && node.hops_away == 0
+            && lastByte == nodeDB->getLastByteOfNodeNum(node.num)
         ) {
             return &node;
         }

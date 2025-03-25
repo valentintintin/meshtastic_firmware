@@ -65,29 +65,10 @@ bool FloodingRouter::isRebroadcaster()
 
 void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
 {
-#ifdef FLOODING_CHANCE
-    if (!isToUs(p) && !isFromUs(p)) {
-#else
     if (!isToUs(p) && (p->hop_limit > 0) && !isFromUs(p)) {
-#endif
         if (p->id != 0) {
             if (isRebroadcaster()) {
                 meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
-
-#ifdef FLOODING_CHANCE
-                if (p->hop_limit == 0) {
-                    if (p->hop_start > HOP_MAX // We allow one time more but not too much again
-                        || !IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER)) {
-                        return false;
-                        }
-
-                    LOG_INFO("Rebroadcasting from ROUTER where as no more hop. Increase for one hop");
-
-                    tosend->hop_start++;
-                    tosend->hop_limit++;
-                }
-#endif
-
 
                 tosend->hop_limit--; // bump down the hop count
 #if USERPREFS_EVENT_MODE

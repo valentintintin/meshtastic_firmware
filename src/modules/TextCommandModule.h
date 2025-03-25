@@ -46,17 +46,18 @@ private:
     static void doNeighbors(MyCommandParser::Argument *args, char *response);
     static void doNodes(MyCommandParser::Argument *args, char *response);
     static void doSearchNode(MyCommandParser::Argument *args, char *response);
-    static void doHelp(MyCommandParser::Argument *args, char *response);
     static void doGpioSet(MyCommandParser::Argument *args, char *response);
     static void doGpioGet(MyCommandParser::Argument *args, char *response);
     static void doGpioGetAdc(MyCommandParser::Argument *args, char *response);
     static void doSetConfig(MyCommandParser::Argument *args, char *response);
     static void doBeacon(MyCommandParser::Argument *args, char *response);
     static void doAsk(MyCommandParser::Argument *args, char *response);
+    static void doGet(MyCommandParser::Argument *args, char *response);
     static void doSendMessage(MyCommandParser::Argument *args, char *response);
 
     static void listNodes(char *buffer, int hoursLastHeard, bool onlyNeighbors);
     static const _meshtastic_NodeInfoLite *findNode(char *nodeIdOrName);
+    static const _meshtastic_NodeInfoLite *findNeighborNodeFromLastByte(uint8_t lastByte);
 };
 
 #endif

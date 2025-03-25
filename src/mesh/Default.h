@@ -19,7 +19,7 @@
 #define default_node_info_broadcast_secs 3 * 60 * 60
 #define default_neighbor_info_broadcast_secs 6 * 60 * 60
 #define min_node_info_broadcast_secs 60 * 60 // No regular broadcasts of more than once an hour
-#define min_neighbor_info_broadcast_secs 60 * 60
+#define min_neighbor_info_broadcast_secs IF_ROUTER(1, 4) * 60 * 60
 
 #define default_mqtt_address "mqtt.meshtastic.org"
 #define default_mqtt_username "meshdev"
@@ -27,7 +27,7 @@
 #define default_mqtt_root "msh"
 
 #define IF_ROUTER(routerVal, normalVal)                                                                                          \
-    ((config.device.role == meshtastic_Config_DeviceConfig_Role_ROUTER) ? (routerVal) : (normalVal))
+    (IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE) ? (routerVal) : (normalVal))
 
 class Default
 {

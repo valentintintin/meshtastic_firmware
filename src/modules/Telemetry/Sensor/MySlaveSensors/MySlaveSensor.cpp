@@ -132,5 +132,5 @@ bool MySlaveSensor::getDatetime(tm *datetime) {
 
     LOG_DEBUG("MySlaveSensor::getDatetime, year: %d", 1900 + datetime->tm_year);
 
-    return 1900 + datetime->tm_year >= 2024;
+    return 1900 + datetime->tm_year >= 2025;
 }

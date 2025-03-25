@@ -729,6 +729,10 @@ void handleNodes(HTTPRequest *req, HTTPResponse *res)
             node["snr"] = new JSONValue(tempNodeInfo->snr);
             node["via_mqtt"] = new JSONValue(BoolToString(tempNodeInfo->via_mqtt));
             node["last_heard"] = new JSONValue((int)tempNodeInfo->last_heard);
+            if (tempNodeInfo->has_hops_away) {
+                node["hops_away"] = new JSONValue((int)tempNodeInfo->hops_away);
+            }
+            node["next_hop"] = new JSONValue((int)tempNodeInfo->next_hop);
             node["position"] = new JSONValue();
 
             if (nodeDB->hasValidPosition(tempNodeInfo)) {
