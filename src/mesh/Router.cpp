@@ -231,7 +231,7 @@ ErrorCode Router::send(meshtastic_MeshPacket *p)
             cn->has_reply_id = true;
             cn->reply_id = p->id;
             cn->level = meshtastic_LogRecord_Level_WARNING;
-            cn->time = getValidTime(RTCQualityFromNet);
+            cn->time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet));
             sprintf(cn->message, "Duty cycle limit exceeded. You can send again in %d mins", silentMinutes);
             service->sendClientNotification(cn);
 #endif
@@ -601,7 +601,7 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
 {
     bool skipHandle = false;
     // Also, we should set the time from the ISR and it should have msec level resolution
-    p->rx_time = getValidTime(RTCQualityFromNet); // store the arrival timestamp for the phone
+    p->rx_time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet)); // store the arrival timestamp for the phone
     // Store a copy of encrypted packet for MQTT
     meshtastic_MeshPacket *p_encrypted = packetPool.allocCopy(*p);
 
@@ -671,12 +671,12 @@ void Router::perhapsHandleReceived(meshtastic_MeshPacket *p)
 {
 #if ENABLE_JSON_LOGGING
     // Even ignored packets get logged in the trace
-    p->rx_time = getValidTime(RTCQualityFromNet); // store the arrival timestamp for the phone
+    p->rx_time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet)); // store the arrival timestamp for the phone
     LOG_TRACE("%s", MeshPacketSerializer::JsonSerializeEncrypted(p).c_str());
 #elif ARCH_PORTDUINO
     // Even ignored packets get logged in the trace
     if (settingsStrings[traceFilename] != "" || settingsMap[logoutputlevel] == level_trace) {
-        p->rx_time = getValidTime(RTCQualityFromNet); // store the arrival timestamp for the phone
+        p->rx_time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet)); // store the arrival timestamp for the phone
         LOG_TRACE("%s", MeshPacketSerializer::JsonSerializeEncrypted(p).c_str());
     }
 #endif

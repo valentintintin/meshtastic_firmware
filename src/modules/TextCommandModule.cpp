@@ -220,7 +220,8 @@ void TextCommandModule::doPing(MyCommandParser::Argument *args, char *response) 
         snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Direct. SNR: %.2f RSSI: %d", currentRequest->rx_snr, currentRequest->rx_rssi);
     } else {
         snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "Sauts: %d/%d", nbHops, currentRequest->hop_limit);
-        if (currentRequest->relay_node != 0 || currentRequest->next_hop != 0) {
+
+        if (currentRequest->relay_node != 0) {
             const auto relayNode = findNeighborNodeFromLastByte(currentRequest->relay_node);
 
             if (relayNode != nullptr) {
