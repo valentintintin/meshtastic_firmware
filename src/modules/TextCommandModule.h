@@ -41,6 +41,7 @@ private:
     static bool shouldReloadConfig;
     static meshtastic_Config_LoRaConfig_ModemPreset oldLoRaModemPreset;
     static char oldPrimaryChannelName[12];
+    static meshtastic_NodeInfoLite *sortedNodeHeards[MAX_NUM_NODES];
 
     static void doPing(MyCommandParser::Argument *args, char *response);
     static void doNeighbors(MyCommandParser::Argument *args, char *response);
@@ -55,9 +56,10 @@ private:
     static void doGet(MyCommandParser::Argument *args, char *response);
     static void doSendMessage(MyCommandParser::Argument *args, char *response);
 
-    static void listNodes(char *buffer, int hoursLastHeard, bool onlyNeighbors);
+    static void listNodes(char *buffer, bool onlyNeighbors);
     static const _meshtastic_NodeInfoLite *findNode(char *nodeIdOrName);
     static const _meshtastic_NodeInfoLite *findNeighborNodeFromLastByte(uint8_t lastByte);
+    static int compareNodesHeardTimeDescending(const void *a, const void *b);
 };
 
 #endif

@@ -50,6 +50,7 @@ class DeviceTelemetryModule : private concurrency::OSThread, public ProtobufModu
     uint32_t sendStatsToPhoneIntervalMs = 15 * SECONDS_IN_MINUTE * 1000; // Send stats to phone every 15 minutes
     uint32_t lastSentStatsToPhone = 0;
     uint32_t lastSentToMesh = 0;
+    pb_size_t lastVariantSent = meshtastic_Telemetry_device_metrics_tag;
 
     void refreshUptime()
     {

@@ -23,6 +23,7 @@ Beacon TextCommandModule::beacon{};
 bool TextCommandModule::shouldReloadConfig = false;
 meshtastic_Config_LoRaConfig_ModemPreset TextCommandModule::oldLoRaModemPreset;
 char TextCommandModule::oldPrimaryChannelName[12];
+meshtastic_NodeInfoLite *TextCommandModule::sortedNodeHeards[MAX_NUM_NODES];
 
 TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("TextCommandModule") {
     parser.registerCommand("!ping", "", doPing);
@@ -72,11 +73,12 @@ int32_t TextCommandModule::runOnce() {
 
 bool TextCommandModule::wantPacket(const meshtastic_MeshPacket *p) {
     return MeshService::isTextPayload(p)
-           && isToUs(p)
-           || (
-               p->decoded.payload.bytes[0] == '!'
-               && isBroadcast(p->to)
-               && isRouter
+           && (isToUs(p)
+               || (
+                   p->decoded.payload.bytes[0] == '!'
+                   && isBroadcast(p->to)
+                   && isRouter
+               )
            );
 }
 
@@ -238,11 +240,11 @@ void TextCommandModule::doPing(MyCommandParser::Argument *args, char *response) 
 }
 
 void TextCommandModule::doNodes(MyCommandParser::Argument *args, char *response) {
-    listNodes(response, nodeDB->numMeshNodes >= 20 ? 24 : INT_MAX, false);
+    listNodes(response, false);
 }
 
 void TextCommandModule::doNeighbors(MyCommandParser::Argument *args, char *response) {
-    listNodes(response, 24, true);
+    listNodes(response, true);
 }
 
 void TextCommandModule::doSearchNode(MyCommandParser::Argument *args, char *response) {
@@ -265,8 +267,8 @@ void TextCommandModule::doSearchNode(MyCommandParser::Argument *args, char *resp
         snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), " -> %s\n%s", node->user.short_name, node->user.long_name);
     }
 
-    snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "\nEntendu: %d-%d-%dT%d:%d:%dZ (%lu)\n",
-            ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec, node->last_heard);
+    snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "\nEntendu: %d-%d-%dT%d:%d:%dZ\n",
+            ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec);
 
     if (node->has_hops_away) {
         if (node->hops_away == 0) {
@@ -488,8 +490,8 @@ void TextCommandModule::doGet(MyCommandParser::Argument *args, char *response) {
     if (strcasecmp(what, "time") == 0) {
         const time_t epochTimeT = getTime();
         const tm ts = *localtime(&epochTimeT);
-        snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "%d-%d-%dT%d:%d:%dZ (%lu)",
-                ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec, epochTimeT);
+        snprintf(response + strlen(response), MyCommandParser::MAX_RESPONSE_SIZE - strlen(response), "%d-%d-%dT%d:%d:%dZ",
+                ts.tm_year + 1900, ts.tm_mon + 1, ts.tm_mday, ts.tm_hour, ts.tm_min, ts.tm_sec);
     } else if (strcasecmp(what, "primaryChannel") == 0) {
         auto channel = channels.getByIndex(channels.getPrimaryIndex());
         strncpy(response, channel.settings.name, MyCommandParser::MAX_RESPONSE_SIZE);
@@ -497,8 +499,6 @@ void TextCommandModule::doGet(MyCommandParser::Argument *args, char *response) {
         strncpy(response, "KO pas compris", MyCommandParser::MAX_RESPONSE_SIZE);
         return;
     }
-
-    strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
 }
 
 void TextCommandModule::doSendMessage(MyCommandParser::Argument *args, char *response) {
@@ -509,26 +509,26 @@ void TextCommandModule::doSendMessage(MyCommandParser::Argument *args, char *res
     }
 }
 
-void TextCommandModule::listNodes(char *buffer, int hoursLastHeard, bool onlyNeighbors) {
-    const auto now = getTime();
-    const auto maxTime = 3600 * hoursLastHeard;
+void TextCommandModule::listNodes(char *buffer, bool onlyNeighbors) {
+    memset(sortedNodeHeards, 0, sizeof(meshtastic_NodeInfoLite *) * MAX_NUM_NODES);
+    for (int i = 0; i < nodeDB->numMeshNodes; i++) {
+        sortedNodeHeards[i] = &nodeDB->meshNodes->at(i);
+    }
 
-    for (const auto& node : *nodeDB->meshNodes) {
-        if (node.num == nodeDB->getNodeNum()) {
+    qsort(sortedNodeHeards, nodeDB->numMeshNodes, sizeof(meshtastic_NodeInfoLite *), compareNodesHeardTimeDescending);
+
+    for (const auto node : sortedNodeHeards) {
+        LOG_WARN("Node 0x%x last_heard %lu", node->num, node->last_heard);
+        if (node->num == nodeDB->getNodeNum()) {
             continue;
         }
 
-        if (strlen(buffer) + (onlyNeighbors ? 5 : 10) >= sizeof(buffer)) {
+        if (strlen(buffer) + (onlyNeighbors ? 5 : 8) >= MyCommandParser::MAX_RESPONSE_SIZE) {
             return;
         }
 
-        if (node.last_heard > 0 && now - node.last_heard > maxTime) {
-            LOG_DEBUG("Node 0x%x not heard for %d hours : %d", node.num, hoursLastHeard, node.last_heard);
-            continue;
-        }
-
-        if (onlyNeighbors && (!node.has_hops_away || node.hops_away != 0)) {
-            LOG_DEBUG("Node 0x%x not a direct neighbor", node.num);
+        if (onlyNeighbors && (!node->has_hops_away || node->hops_away != 0)) {
+            LOG_DEBUG("Node 0x%x not a direct neighbor", node->num);
             continue;
         }
 
@@ -536,18 +536,18 @@ void TextCommandModule::listNodes(char *buffer, int hoursLastHeard, bool onlyNei
             strncat(buffer, "\n", MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer));
         }
 
-        if (node.has_user) {
-            strncat(buffer, node.user.short_name, MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer));
+        if (node->has_user) {
+            strncat(buffer, node->user.short_name, MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer));
         } else {
-            snprintf(buffer + strlen(buffer), MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer), "%x", node.num & 0xFFFF);
+            snprintf(buffer + strlen(buffer), MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer), "%x", node->num & 0xFFFF);
         }
-        if (!onlyNeighbors && node.has_hops_away) {
-            snprintf(buffer + strlen(buffer), MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer), " (%d)", node.hops_away);
+        if (!onlyNeighbors && node->has_hops_away) {
+            snprintf(buffer + strlen(buffer), MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer), ":%d", node->hops_away);
         }
     }
 
     if (strlen(buffer) == 0) {
-        snprintf(buffer, MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer), "Personne depuis %d heures", hoursLastHeard);
+        snprintf(buffer, MyCommandParser::MAX_RESPONSE_SIZE - strlen(buffer), "Personne entendu");
     }
 }
 
@@ -579,6 +579,13 @@ const _meshtastic_NodeInfoLite *TextCommandModule::findNeighborNodeFromLastByte(
     }
 
     return nullptr;
+}
+
+int TextCommandModule::compareNodesHeardTimeDescending(const void *a, const void *b) {
+    const auto first = *(const meshtastic_NodeInfoLite **)a;
+    const auto second = *(const meshtastic_NodeInfoLite **)b;
+
+    return (second->last_heard > first->last_heard) - (second->last_heard < first->last_heard);
 }
 
 #endif

@@ -643,6 +643,19 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
             cancelSending(p->from, p->id);
             skipHandle = true;
         }
+
+        if (shouldIgnoreNonstandardPorts) {
+            switch (p->decoded.portnum) {
+                case meshtastic_PortNum_TELEMETRY_APP:
+                    if (p->hop_start - p->hop_limit > HOP_TELEMETRY_RELAY_ALLOWED) {
+                        cancelSending(p->from, p->id);
+                        skipHandle = true;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
     } else {
         printPacket("packet decoding failed or skipped (no PSK?)", p);
     }

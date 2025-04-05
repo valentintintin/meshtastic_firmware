@@ -111,7 +111,7 @@ void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies)
     p->to = dest;
     p->decoded.want_response = wantReplies;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
-    p->hop_limit = 0;
+    p->hop_limit = HOP_NEIGHBOR;
     printNeighborInfo("SENDING", &neighborInfo);
     service->sendToMesh(p, RX_SRC_LOCAL, true);
 }

@@ -168,15 +168,25 @@ void DeviceTelemetryModule::sendLocalStatsToPhone()
 
 bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 {
-    meshtastic_Telemetry telemetry = getDeviceTelemetry();
-    LOG_INFO("Send: air_util_tx=%f, channel_utilization=%f, battery_level=%i, voltage=%f, uptime=%i",
-             telemetry.variant.device_metrics.air_util_tx, telemetry.variant.device_metrics.channel_utilization,
-             telemetry.variant.device_metrics.battery_level, telemetry.variant.device_metrics.voltage,
-             telemetry.variant.device_metrics.uptime_seconds);
+    meshtastic_Telemetry telemetry = IF_ROUTER(lastVariantSent == meshtastic_Telemetry_local_stats_tag ? getDeviceTelemetry() : getLocalStatsTelemetry(), getDeviceTelemetry());
+
+    lastVariantSent = telemetry.which_variant;
+
+    if (telemetry.which_variant == meshtastic_Telemetry_device_metrics_tag) {
+        LOG_INFO("Send: air_util_tx=%f, channel_utilization=%f, battery_level=%i, voltage=%f, uptime=%i",
+                 telemetry.variant.device_metrics.air_util_tx, telemetry.variant.device_metrics.channel_utilization,
+                 telemetry.variant.device_metrics.battery_level, telemetry.variant.device_metrics.voltage,
+                 telemetry.variant.device_metrics.uptime_seconds);
+    } else {
+        LOG_INFO("Send: air_util_tx=%f, channel_utilization=%f, num_packet_tx=%i, num_packet_rx=%i, uptime=%i",
+                 telemetry.variant.local_stats.air_util_tx, telemetry.variant.local_stats.channel_utilization,
+                 telemetry.variant.local_stats.num_packets_tx, telemetry.variant.local_stats.num_packets_rx,
+                 telemetry.variant.local_stats.uptime_seconds);
+    }
 
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->to = dest;
-    p->hop_limit = HOP_RELIABLE;
+    p->hop_limit = HOP_TELEMETRY_DEVICE;
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 

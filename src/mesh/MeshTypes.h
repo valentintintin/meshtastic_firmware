@@ -40,6 +40,12 @@ enum RxSource {
 /// We normally just use max 3 hops for sending reliable messages
 #define HOP_RELIABLE 3
 
+#define HOP_TELEMETRY_RELAY_ALLOWED HOP_RELIABLE
+#define HOP_TELEMETRY_DEVICE HOP_RELIABLE
+#define HOP_TELEMETRY_ENVIRONMENT HOP_RELIABLE
+#define HOP_TELEMETRY_POWER 0
+#define HOP_NEIGHBOR 0
+
 // For old firmware or when falling back to flooding, there is no next-hop preference
 #define NO_NEXT_HOP_PREFERENCE 0
 // For old firmware there is no relay node set

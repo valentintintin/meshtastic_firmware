@@ -605,8 +605,15 @@ void NodeDB::installDefaultConfig(bool preserveKey = false)
 #endif
     config.position.broadcast_smart_minimum_distance = 100;
     config.position.broadcast_smart_minimum_interval_secs = 30;
+#ifdef USERPREFS_CONFIG_POSITION_INTERVAL
+    config.position.position_broadcast_secs = USERPREFS_CONFIG_POSITION_INTERVAL;
+#endif
+#ifdef USERPREFS_CONFIG_DEVICE_INTERVAL
+    config.device.node_info_broadcast_secs = USERPREFS_CONFIG_DEVICE_INTERVAL;
+#else
     if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER)
         config.device.node_info_broadcast_secs = default_node_info_broadcast_secs;
+#endif
     config.security.serial_enabled = true;
     config.security.admin_channel_enabled = false;
     resetRadioConfig(true); // This also triggers NodeInfo/Position requests since we're fresh
@@ -790,18 +797,34 @@ void NodeDB::installDefaultModuleConfig()
     moduleConfig.neighbor_info.enabled = false;
 #ifdef USERPREFS_NEIGHBOR_INFO_ENABLED
     moduleConfig.neighbor_info.enabled = USERPREFS_NEIGHBOR_INFO_ENABLED;
+#ifdef USERPREFS_NEIGHBOR_INFO_INTERVAL
+    moduleConfig.neighbor_info.update_interval = USERPREFS_NEIGHBOR_INFO_INTERVAL;
+#endif
+#endif
+
+#ifdef USERPREFS_TELEMETRY_DEVICE_INTERVAL
+    moduleConfig.telemetry.device_update_interval = USERPREFS_TELEMETRY_DEVICE_INTERVAL;
 #endif
 
 #ifdef USERPREFS_TELEMETRY_ENVIRONMENT_ENABLED
     moduleConfig.telemetry.environment_measurement_enabled = USERPREFS_TELEMETRY_ENVIRONMENT_ENABLED;
+#ifdef USERPREFS_TELEMETRY_ENVIRONMENT_INTERVAL
+    moduleConfig.telemetry.environment_update_interval = USERPREFS_TELEMETRY_ENVIRONMENT_INTERVAL;
+#endif
 #endif
 
 #ifdef USERPREFS_TELEMETRY_AIR_QUALITY_ENABLED
     moduleConfig.telemetry.air_quality_enabled = USERPREFS_TELEMETRY_AIR_QUALITY_ENABLED;
+#ifdef USERPREFS_TELEMETRY_AIR_QUALITY_INTERVAL
+    moduleConfig.telemetry.air_quality_interval = USERPREFS_TELEMETRY_AIR_QUALITY_INTERVAL;
+#endif
 #endif
 
 #ifdef USERPREFS_TELEMETRY_POWER_ENABLED
     moduleConfig.telemetry.power_measurement_enabled = USERPREFS_TELEMETRY_POWER_ENABLED;
+#ifdef USERPREFS_TELEMETRY_POWER_INTERVAL
+    moduleConfig.telemetry.power_update_interval = USERPREFS_TELEMETRY_POWER_INTERVAL;
+#endif
 #endif
 
     moduleConfig.has_detection_sensor = true;

@@ -27,7 +27,7 @@
 #define NUM_OCV_POINTS 11
 #define OCV_ARRAY 12700, 12500, 12420, 12320, 12200, 12060, 11900, 11750, 11580, 11310, 10500
 
-#define HAS_CPU_SHUTDOWN 0 // We do not want to shutdown whereas we could
+#define HAS_CPU_SHUTDOWN 0 // We do not want to shutdown even if we could
 #define USE_SX1262
 
 #define RP2040_SLOW_CLOCK

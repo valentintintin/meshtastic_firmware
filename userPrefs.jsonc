@@ -51,7 +51,7 @@
   // "USERPREFS_TELEMETRY_POWER_ENABLED": "false",
   // "USERPREFS_NEIGHBOR_INFO_ENABLED": "false",
   // "USERPREFS_SERIAL_ENABLED": "false",
-  // "USERPREFS_SERIAL_BAUD": "115200",
+  // "USERPREFS_SERIAL_BAUD": "meshtastic_ModuleConfig_SerialConfig_Serial_Baud_BAUD_115200",
   // "USERPREFS_SERIAL_MODE": "meshtastic_ModuleConfig_SerialConfig_Serial_Mode_PROTO",
   // "USERPREFS_SERIAL_OVERRIDE_CONSOLE": "false",
   // "USERPREFS_SERIAL_RXD": "0",
