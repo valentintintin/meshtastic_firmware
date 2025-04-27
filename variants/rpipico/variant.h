@@ -5,6 +5,8 @@
 #define ARDUINO_ARCH_AVR
 
 #define MAX_NUM_NODES 250
+#define HOP_TELEMETRY_DEVICE 0
+#define HOP_TELEMETRY_ENVIRONMENT 0
 
 // default I2C pins:
 // SDA = 4

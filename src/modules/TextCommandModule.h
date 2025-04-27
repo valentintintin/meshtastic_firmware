@@ -20,28 +20,29 @@ typedef struct {
 
 class TextCommandModule : public SinglePortModule, public Observable<const meshtastic_MeshPacket *>, private concurrency::OSThread {
 public:
+    char response[MyCommandParser::MAX_RESPONSE_SIZE] = {};
+
     TextCommandModule();
     int32_t runOnce() override;
+    bool processCommand(const char *command);
 
 protected:
     bool wantPacket(const meshtastic_MeshPacket *p) override;
     ProcessMessage handleReceived(const meshtastic_MeshPacket &mp) override;
 
 private:
-    char tempBuffer[MyCommandParser::MAX_RESPONSE_SIZE] = {};
     MyCommandParser parser;
-    bool isRouter;
+    bool isRouter = false;
 
-    bool processCommand(const char *command);
     uint64_t sendBeacon();
     bool sendMessage(char modemPresetName[2], char channelName[12], char message[MyCommandParser::MAX_RESPONSE_SIZE]);
 
-    static TextCommandModule *instance;
     static Beacon beacon;
     static bool shouldReloadConfig;
     static meshtastic_Config_LoRaConfig_ModemPreset oldLoRaModemPreset;
     static char oldPrimaryChannelName[12];
     static meshtastic_NodeInfoLite *sortedNodeHeards[MAX_NUM_NODES];
+    static bool updateProtoSerial;
 
     static void doPing(MyCommandParser::Argument *args, char *response);
     static void doNeighbors(MyCommandParser::Argument *args, char *response);
@@ -55,12 +56,18 @@ private:
     static void doAsk(MyCommandParser::Argument *args, char *response);
     static void doGet(MyCommandParser::Argument *args, char *response);
     static void doSendMessage(MyCommandParser::Argument *args, char *response);
+#ifdef SLAVE_SENSOR
+    static void doCommandMySlaveSensor(MyCommandParser::Argument *args, char *response);
+    static void doGetResponseCommandMySlaveSensor(MyCommandParser::Argument *args, char *response);
+#endif
 
     static void listNodes(char *buffer, bool onlyNeighbors);
     static const _meshtastic_NodeInfoLite *findNode(char *nodeIdOrName);
     static const _meshtastic_NodeInfoLite *findNeighborNodeFromLastByte(uint8_t lastByte);
     static int compareNodesHeardTimeDescending(const void *a, const void *b);
 };
+
+extern TextCommandModule *textCommandModule;
 
 #endif
 #endif //MESHTASTIC_MYSLAVESENSOR_H

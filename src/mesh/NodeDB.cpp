@@ -867,6 +867,31 @@ void NodeDB::installDefaultModuleConfig()
     moduleConfig.serial.txd = USERPREFS_SERIAL_TXD;
 #endif
 
+#ifdef USERPREFS_MQTT_ENABLED
+    moduleConfig.mqtt.enabled = USERPREFS_MQTT_ENABLED;
+#endif
+
+#ifdef USERPREFS_MQTT_ENCRYPTION_ENABLED
+    moduleConfig.mqtt.encryption_enabled = USERPREFS_MQTT_ENCRYPTION_ENABLED;
+#endif
+
+#ifdef USERPREFS_MQTT_PROXY_CLIENT_ENABLED
+    moduleConfig.mqtt.proxy_to_client_enabled = USERPREFS_MQTT_PROXY_CLIENT_ENABLED;
+#endif
+
+    moduleConfig.mqtt.has_map_report_settings = true;
+#ifdef USERPREFS_MQTT_MAP_REPORTING_ENABLED
+    moduleConfig.mqtt.map_reporting_enabled = USERPREFS_MQTT_MAP_REPORTING_ENABLED;
+#endif
+
+#ifdef USERPREFS_MQTT_MAP_REPORTING_INTERVAL
+    moduleConfig.mqtt.map_report_settings.publish_interval_secs = USERPREFS_MQTT_MAP_REPORTING_INTERVAL;
+#endif
+
+#ifdef USERPREFS_MQTT_MAP_REPORTING_PRECISION
+    moduleConfig.mqtt.map_report_settings.position_precision = USERPREFS_MQTT_MAP_REPORTING_PRECISION;
+#endif
+
     initModuleConfigIntervals();
 }
 

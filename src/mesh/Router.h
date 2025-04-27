@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "Channels.h"
 #include "MemoryPool.h"
 #include "MeshTypes.h"
@@ -93,6 +95,8 @@ class Router : protected concurrency::OSThread, protected PacketHistory
 
   protected:
     friend class RoutingModule;
+
+    std::map<std::tuple<uint32_t, meshtastic_PortNum>, unsigned long> lastPacketTypeByNodeNum = {};
 
     /**
      * Should this incoming filter be dropped?

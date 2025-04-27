@@ -19,6 +19,11 @@
 #ifndef _VARIANT_RAK4630_
 #define _VARIANT_RAK4630_
 
+#define HOP_TELEMETRY_RELAY_ALLOWED 0
+#define HOP_TELEMETRY_DEVICE 0
+#define HOP_TELEMETRY_ENVIRONMENT 0
+#define HOP_TELEMETRY_AIR_QUALITY 0
+
 #define RAK4630
 
 /** Master clock frequency */

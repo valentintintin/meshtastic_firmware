@@ -1,10 +1,15 @@
+#if USE_TEXTCOUSE_TEXTCOMMANDMODULEMMANDMODULE
+
 #include "NeighborInfoModule.h"
 #include "NodeInfoModule.h"
 #include "PositionModule.h"
+#include "SerialModule.h"
 #include "Telemetry/DeviceTelemetry.h"
 #include "Telemetry/EnvironmentTelemetry.h"
 #include "Telemetry/PowerTelemetry.h"
-#if USE_TEXTCOMMANDMODULE
+#ifdef SLAVE_SENSOR
+#include "Telemetry/Sensor/MySlaveSensors/MySlaveSensor.h"
+#endif
 
 #include "configuration.h"
 #include "MeshService.h"
@@ -18,12 +23,17 @@
 
 #include "TextCommandModule.h"
 
-TextCommandModule* TextCommandModule::instance = nullptr;
+#ifdef SLAVE_SENSOR
+    MySlaveSensor mySlaveSensor("SlaveSensor");
+#endif
+
+TextCommandModule* textCommandModule{};
 Beacon TextCommandModule::beacon{};
 bool TextCommandModule::shouldReloadConfig = false;
 meshtastic_Config_LoRaConfig_ModemPreset TextCommandModule::oldLoRaModemPreset;
 char TextCommandModule::oldPrimaryChannelName[12];
 meshtastic_NodeInfoLite *TextCommandModule::sortedNodeHeards[MAX_NUM_NODES];
+bool TextCommandModule::updateProtoSerial = false;
 
 TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtastic_PortNum_TEXT_MESSAGE_APP), concurrency::OSThread("TextCommandModule") {
     parser.registerCommand("!ping", "", doPing);
@@ -38,12 +48,18 @@ TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtas
     parser.registerCommand("!get", "s", doGet);
     parser.registerCommand("!ask", "s", doAsk);
     parser.registerCommand("!msg", "sss", doSendMessage);
-
-    instance = this;
+#ifdef SLAVE_SENSOR
+    parser.registerCommand("!cmdSlave", "s", doCommandMySlaveSensor);
+    parser.registerCommand("!cmdRepSlave", "s", doGetResponseCommandMySlaveSensor);
+#endif
 }
 
 int32_t TextCommandModule::runOnce() {
     isRouter = IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER);
+
+    if (updateProtoSerial) {
+        serialModule->setAsConnected(true);
+    }
 
     const auto txQueueStatus = router->getQueueStatus();
     if (shouldReloadConfig && txQueueStatus.free == txQueueStatus.maxlen) {
@@ -84,7 +100,7 @@ bool TextCommandModule::wantPacket(const meshtastic_MeshPacket *p) {
 
 ProcessMessage TextCommandModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
-    memset(tempBuffer, '\0', MyCommandParser::MAX_RESPONSE_SIZE);
+    memset(response, '\0', MyCommandParser::MAX_RESPONSE_SIZE);
 
     LOG_INFO("Received message for reply from=0x%0x, id=%d, msg=%.*s", mp.from, mp.id, mp.decoded.payload.size, reinterpret_cast<const char *>(mp.decoded.payload.bytes));
 
@@ -95,8 +111,8 @@ ProcessMessage TextCommandModule::handleReceived(const meshtastic_MeshPacket &mp
     const auto reply = allocDataPacket();                 // Allocate a packet for sending
     setReplyTo(reply, mp);
 
-    reply->decoded.payload.size = strlen(tempBuffer);
-    memcpy(reply->decoded.payload.bytes, tempBuffer, reply->decoded.payload.size);
+    reply->decoded.payload.size = strlen(response);
+    memcpy(reply->decoded.payload.bytes, response, reply->decoded.payload.size);
 
     LOG_INFO("Reply for command from=0x%0x, id=%d, msg=%.*s", reply->from, reply->id, reply->decoded.payload.size, reinterpret_cast<const char *>(reply->decoded.payload.bytes));
 
@@ -106,14 +122,14 @@ ProcessMessage TextCommandModule::handleReceived(const meshtastic_MeshPacket &mp
 }
 
 bool TextCommandModule::processCommand(const char *command) {
-    if (!parser.processCommand(command, tempBuffer)) {
+    if (!parser.processCommand(command, response)) {
         LOG_WARN("Failed to parse command %s", command);
 
         if (!isRouter) {
             return false;
         }
 
-        doPing(nullptr, tempBuffer);
+        doPing(nullptr, response);
     }
 
     return true;
@@ -131,10 +147,10 @@ uint64_t TextCommandModule::sendBeacon() {
     p->channel = 0;
     p->hop_limit = beacon.to->has_hops_away ? beacon.to->hops_away : config.lora.hop_limit;
 
-    snprintf(tempBuffer, MyCommandParser::MAX_RESPONSE_SIZE, "!ping %llu\nSNR: %.2f", beacon.nbTxLeft, beacon.to->snr);
+    snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "!ping %llu\nSNR: %.2f", beacon.nbTxLeft, beacon.to->snr);
 
-    p->decoded.payload.size = strlen(tempBuffer);
-    memcpy(p->decoded.payload.bytes, tempBuffer, p->decoded.payload.size);
+    p->decoded.payload.size = strlen(response);
+    memcpy(p->decoded.payload.bytes, response, p->decoded.payload.size);
 
     service->sendToMesh(p);
 
@@ -393,6 +409,12 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
             service->reloadConfig(SEGMENT_DEVICESTATE | SEGMENT_NODEDATABASE);
             shouldReboot = true;
         }
+    } else if (strcasecmp(key, "serialProto") == 0) {
+        updateProtoSerial = value[0] == '1';
+        if (updateProtoSerial) {
+            LOG_DEBUG("Set phone is connected (virtually)");
+        }
+        serialModule->setAsConnected(updateProtoSerial);
     } else {
         ok = false;
         snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "KO %s not found", key);
@@ -497,17 +519,26 @@ void TextCommandModule::doGet(MyCommandParser::Argument *args, char *response) {
         strncpy(response, channel.settings.name, MyCommandParser::MAX_RESPONSE_SIZE);
     } else {
         strncpy(response, "KO pas compris", MyCommandParser::MAX_RESPONSE_SIZE);
-        return;
     }
 }
 
 void TextCommandModule::doSendMessage(MyCommandParser::Argument *args, char *response) {
-    if (instance != nullptr && instance->sendMessage(args[0].asString, args[1].asString, args[2].asString)) {
+    if (textCommandModule != nullptr && textCommandModule->sendMessage(args[0].asString, args[1].asString, args[2].asString)) {
         strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
     } else {
         strncpy(response, "KO", MyCommandParser::MAX_RESPONSE_SIZE);
     }
 }
+
+#ifdef SLAVE_SENSOR
+void TextCommandModule::doCommandMySlaveSensor(MyCommandParser::Argument *args, char *response) {
+    strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
+}
+
+void TextCommandModule::doGetResponseCommandMySlaveSensor(MyCommandParser::Argument *args, char *response) {
+    strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
+}
+#endif
 
 void TextCommandModule::listNodes(char *buffer, bool onlyNeighbors) {
     memset(sortedNodeHeards, 0, sizeof(meshtastic_NodeInfoLite *) * MAX_NUM_NODES);

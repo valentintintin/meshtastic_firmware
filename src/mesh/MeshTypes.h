@@ -40,11 +40,18 @@ enum RxSource {
 /// We normally just use max 3 hops for sending reliable messages
 #define HOP_RELIABLE 3
 
+#define HOP_POSITION_RELAY_ALLOWED HOP_RELIABLE
 #define HOP_TELEMETRY_RELAY_ALLOWED HOP_RELIABLE
 #define HOP_TELEMETRY_DEVICE HOP_RELIABLE
 #define HOP_TELEMETRY_ENVIRONMENT HOP_RELIABLE
+#define HOP_TELEMETRY_AIR_QUALITY HOP_RELIABLE
 #define HOP_TELEMETRY_POWER 0
+#define HOP_POSITION config.lora.hop_limit
 #define HOP_NEIGHBOR 0
+#define TIME_BETWEEN_RELAY_NODEINFO (12 * 60 * 60 * 1000L) // 12 hours
+#define TIME_BETWEEN_RELAY_TELEMETRY (4 * 60 * 60 * 1000L) // 4 hours
+#define TIME_BETWEEN_RELAY_POSITION (1 * 60 * 60 * 1000L) // 1 hour
+#define TIME_BETWEEN_RELAY_TRACEROUTE (5 * 60 * 1000L) // 5 minutes
 
 // For old firmware or when falling back to flooding, there is no next-hop preference
 #define NO_NEXT_HOP_PREFERENCE 0

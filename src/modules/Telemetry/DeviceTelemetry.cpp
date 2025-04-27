@@ -22,7 +22,8 @@ int32_t DeviceTelemetryModule::runOnce()
     refreshUptime();
     bool isImpoliteRole =
         IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
-    if (((lastSentToMesh == 0) ||
+    bool shouldTxOnLora = IF_ROUTER(true, moduleConfig.neighbor_info.transmit_over_lora || config.power.is_power_saving);
+    if (shouldTxOnLora && ((lastSentToMesh == 0) ||
          ((uptimeLastMs - lastSentToMesh) >=
           Default::getConfiguredOrDefaultMsScaled(moduleConfig.telemetry.device_update_interval,
                                                   default_telemetry_broadcast_interval_secs, numOnlineNodes))) &&
@@ -186,7 +187,9 @@ bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->to = dest;
-    p->hop_limit = HOP_TELEMETRY_DEVICE;
+    if (isBroadcast(dest)) {
+        p->hop_limit = HOP_TELEMETRY_DEVICE;
+    }
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 

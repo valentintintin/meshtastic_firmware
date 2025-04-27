@@ -14,6 +14,8 @@
 #if !MESHTASTIC_EXCLUDE_MQTT
 #include "mqtt/MQTT.h"
 #endif
+#include <Throttle.h>
+
 #include "Default.h"
 #if ARCH_PORTDUINO
 #include "platform/portduino/PortduinoGlue.h"
@@ -645,16 +647,62 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
             skipHandle = true;
         }
 
-        if (shouldIgnoreNonstandardPorts) {
+        if (shouldIgnoreNonstandardPorts && !isToUs(p)) {
+            bool shouldFilter = false;
+            const auto nbHops = p->hop_start - p->hop_limit;
+            const auto lastSeen = lastPacketTypeByNodeNum.find(std::tuple<uint32_t, meshtastic_PortNum>{p->from, p->decoded.portnum});
+
+            uint32_t compareTime = 0;
+            uint8_t compareHops = 999;
+
             switch (p->decoded.portnum) {
-                case meshtastic_PortNum_TELEMETRY_APP:
-                    if (p->hop_start - p->hop_limit > HOP_TELEMETRY_RELAY_ALLOWED) {
-                        cancelSending(p->from, p->id);
-                        skipHandle = true;
+                case meshtastic_PortNum_NODEINFO_APP: {
+                    shouldFilter = true;
+                    compareTime = TIME_BETWEEN_RELAY_NODEINFO;
+
+                    LOG_DEBUG("Packet type nodeinfo should filter last seen %lu <= %d", lastSeen != lastPacketTypeByNodeNum.end() ? millis() - lastSeen->second : 0, compareTime);
+                }
+                break;
+                case meshtastic_PortNum_TELEMETRY_APP: {
+                    shouldFilter = isBroadcast(p->to);
+                    compareTime = TIME_BETWEEN_RELAY_TELEMETRY;
+                    compareHops = HOP_TELEMETRY_RELAY_ALLOWED;
+
+                    if (shouldFilter) {
+                        LOG_DEBUG("Packet type telemetry broadcast should filter last seen %lu <= %d and %d hops should <= %d", lastSeen != lastPacketTypeByNodeNum.end() ? millis() - lastSeen->second : 0, nbHops, compareTime, compareTime);
                     }
-                    break;
+                }
+                break;
+                case meshtastic_PortNum_POSITION_APP: {
+                    shouldFilter = true;
+                    compareTime = TIME_BETWEEN_RELAY_POSITION;
+
+                    LOG_DEBUG("Packet type position should filter last seen %lu <= %d", lastSeen != lastPacketTypeByNodeNum.end() ? millis() - lastSeen->second : 0, compareTime);
+                }
+                break;
+                case meshtastic_PortNum_TRACEROUTE_APP: {
+                    shouldFilter = true;
+                    compareTime = TIME_BETWEEN_RELAY_TRACEROUTE;
+
+                    LOG_DEBUG("Packet type traceroute should filter last seen %lu <= %d", lastSeen != lastPacketTypeByNodeNum.end() ? millis() - lastSeen->second : 0, compareTime);
+                }
+                break;
                 default:
                     break;
+            }
+
+            if (shouldFilter) {
+                if (compareTime && lastSeen != lastPacketTypeByNodeNum.end() && Throttle::isWithinTimespanMs(lastSeen->second, compareTime)) {
+                    LOG_DEBUG("Ignore packet because lastSeen %d < %d", millis() - lastSeen->second, compareTime);
+                    cancelSending(p->from, p->id);
+                    skipHandle = true;
+                }
+
+                if (!skipHandle && nbHops >= compareHops) {
+                    LOG_DEBUG("Ignore packet because hop (%d) max allowed (%d) reached", nbHops, compareHops);
+                    cancelSending(p->from, p->id);
+                    skipHandle = true;
+                }
             }
         }
     } else {
@@ -663,6 +711,10 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
 
     // call modules here
     if (!skipHandle) {
+        if (decodedState == DECODE_SUCCESS) {
+            lastPacketTypeByNodeNum[std::tuple<uint32_t, meshtastic_PortNum>{p->from, p->decoded.portnum}] = millis();
+        }
+
         MeshModule::callModules(*p, src);
 
 #if !MESHTASTIC_EXCLUDE_MQTT

@@ -4,6 +4,11 @@
 
 #define ARDUINO_ARCH_AVR
 
+#define MAX_NUM_NODES 250
+#define HOP_TELEMETRY_RELAY_ALLOWED 0
+#define HOP_TELEMETRY_DEVICE 0
+#define HOP_TELEMETRY_ENVIRONMENT 0
+
 // #define USE_SH1106 1
 
 // default I2C pins:
@@ -30,8 +35,8 @@
 #define HAS_CPU_SHUTDOWN 0 // We do not want to shutdown even if we could
 #define USE_SX1262
 
-#define RP2040_SLOW_CLOCK
-#define MY_SLOW_CLOCK
+// #define RP2040_SLOW_CLOCK
+// #define MY_SLOW_CLOCK
 
 #ifdef RP2040_SLOW_CLOCK
 // Redefine UART1 serial log output to avoid collision with UART0 for GPS.

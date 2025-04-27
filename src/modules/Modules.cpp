@@ -154,7 +154,7 @@ void setupModules()
 #endif
         // Example: Put your module here
 #if USE_TEXTCOMMANDMODULE
-         new TextCommandModule();
+         textCommandModule = new TextCommandModule();
 #endif
 #if (HAS_BUTTON || ARCH_PORTDUINO) && !MESHTASTIC_EXCLUDE_INPUTBROKER
         rotaryEncoderInterruptImpl1 = new RotaryEncoderInterruptImpl1();

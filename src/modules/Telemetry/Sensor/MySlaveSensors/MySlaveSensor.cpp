@@ -1,6 +1,8 @@
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-
 #include "MySlaveSensor.h"
+
+#include <time.h>
+#include <modules/TextCommandModule.h>
+
 #include "Wire.h"
 
 MySlaveSensor::MySlaveSensor(const char *sensorName) : TelemetrySensor(meshtastic_TelemetrySensorType_SENSOR_UNSET, sensorName){}
@@ -77,7 +79,7 @@ uint32_t MySlaveSensor::getData(uint8_t what) {
 
     while (wire->available()) {
         length--;
-        value += wire->read() << (length * 8);
+        value += wire->read() << length * 8;
     }
 
     return value;
@@ -96,6 +98,32 @@ uint8_t MySlaveSensor::ping() {
     return ping;
 }
 
+// void MySlaveSensor::sendCommand(const char *command) {
+//     TwoWire *wire = nodeTelemetrySensorsMap[sensorType].second;
+//
+//     wire->beginTransmission(MY_SLAVE_SENSOR_ADDR);
+//     wire->write(REG_COMMAND_TRANSMIT);
+//     wire->write(command);
+//     wire->endTransmission();
+//
+//     wire->requestFrom(MY_SLAVE_SENSOR_ADDR, BUFFER_LENGTH);
+//     byte i = 0;
+//     while (Wire.available() && i < BUFFER_LENGTH) {
+//         buffer[i++] = Wire.read();
+//     }
+//     buffer[i] = '\0';
+// }
+
+// void MySlaveSensor::receiveCommandOrResponse(char *commandOrResponse) const {
+//     TwoWire *wire = nodeTelemetrySensorsMap[sensorType].second;
+//
+//     textCommandModule->processCommand(buffer);
+//
+//     wire->beginTransmission(MY_SLAVE_SENSOR_ADDR);
+//     wire->write(REG_COMMAND_TRANSMIT);
+//     wire->endTransmission();
+// }
+
 uint16_t MySlaveSensor::getBatteryVoltage() {
     return getData(REG_BATTERY_VOLTAGE);
 }
@@ -113,7 +141,7 @@ uint16_t MySlaveSensor::getSolarCurrent() {
 }
 
 int16_t MySlaveSensor::getTemperature() {
-    return (int16_t) getData(REG_TEMPERATURE);
+    return static_cast<int16_t>(getData(REG_TEMPERATURE));
 }
 
 uint16_t MySlaveSensor::getPressure() {
@@ -125,16 +153,14 @@ uint16_t MySlaveSensor::getHumidity() {
 }
 
 bool MySlaveSensor::getDatetime(tm *datetime) {
-    datetime->tm_sec = (int) getData(REG_SECONDS);
-    datetime->tm_min = (int) getData(REG_MINUTES);
-    datetime->tm_hour = (int) getData(REG_HOURS);
-    datetime->tm_mday = (int) getData(REG_DAYS);
-    datetime->tm_mon = (int) getData(REG_MONTHS) - 1;
-    datetime->tm_year = (int) getData(REG_YEARS) - 1900;
+    datetime->tm_sec = static_cast<int>(getData(REG_SECONDS));
+    datetime->tm_min = static_cast<int>(getData(REG_MINUTES));
+    datetime->tm_hour = static_cast<int>(getData(REG_HOURS));
+    datetime->tm_mday = static_cast<int>(getData(REG_DAYS));
+    datetime->tm_mon = static_cast<int>(getData(REG_MONTHS)) - 1;
+    datetime->tm_year = static_cast<int>(getData(REG_YEARS)) - 1900;
 
     LOG_DEBUG("MySlaveSensor::getDatetime, year: %d", 1900 + datetime->tm_year);
 
     return 1900 + datetime->tm_year >= 2025;
 }
-
-#endif
