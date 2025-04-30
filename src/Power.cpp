@@ -76,26 +76,51 @@ static const uint8_t ext_chrg_detect_value = EXT_CHRG_DETECT_VALUE;
 #endif
 #endif
 
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_PORTDUINO)
+#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
+#if __has_include(<Adafruit_INA219.h>)
 INA219Sensor ina219Sensor;
-INA226Sensor ina226Sensor;
-INA260Sensor ina260Sensor;
-INA3221Sensor ina3221Sensor;
-#ifdef SLAVE_SENSOR
-MySlavePowerSensor mySlavePowerSensor;
-#endif
+#else
+NullSensor ina219Sensor;
 #endif
 
-#if !MESHTASTIC_EXCLUDE_I2C && !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
+#if __has_include(<INA226.h>)
+INA226Sensor ina226Sensor;
+#else
+NullSensor ina226Sensor;
+#endif
+
+#if __has_include(<Adafruit_INA260.h>)
+INA260Sensor ina260Sensor;
+#else
+NullSensor ina260Sensor;
+#endif
+
+#if __has_include(<INA3221.h>)
+INA3221Sensor ina3221Sensor;
+#else
+NullSensor ina3221Sensor;
+#endif
+
+#ifdef __has_include(<MySlaveSensor.h)
+MySlavePowerSensor mySlavePowerSensor;
+#endif
+
+#endif
+
+#if !MESHTASTIC_EXCLUDE_I2C && !defined(ARCH_STM32WL)
 #include "modules/Telemetry/Sensor/MAX17048Sensor.h"
 #include <utility>
 extern std::pair<uint8_t, TwoWire *> nodeTelemetrySensorsMap[_meshtastic_TelemetrySensorType_MAX + 1];
 #if HAS_TELEMETRY && (!MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR || !MESHTASTIC_EXCLUDE_POWER_TELEMETRY)
+#if __has_include(<Adafruit_MAX1704X.h>)
 MAX17048Sensor max17048Sensor;
+#else
+NullSensor max17048Sensor;
+#endif
 #endif
 #endif
 
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && HAS_RAKPROT && !defined(ARCH_PORTDUINO)
+#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && HAS_RAKPROT
 RAK9154Sensor rak9154Sensor;
 #endif
 
@@ -206,7 +231,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
      */
     virtual int getBatteryPercent() override
     {
-#if defined(HAS_RAKPROT) && !defined(ARCH_PORTDUINO) && !defined(HAS_PMU)
+#if defined(HAS_RAKPROT) && !defined(HAS_PMU)
         if (hasRAK()) {
             return rak9154Sensor.getBusBatteryPercent();
         }
@@ -251,15 +276,13 @@ class AnalogBatteryLevel : public HasBatteryLevel
     virtual uint16_t getBattVoltage() override
     {
 
-#if HAS_TELEMETRY && defined(HAS_RAKPROT) && !defined(ARCH_PORTDUINO) && !defined(HAS_PMU) &&                                    \
-    !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
+#if HAS_TELEMETRY && defined(HAS_RAKPROT) && !defined(HAS_PMU) && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
         if (hasRAK()) {
             return getRAKVoltage();
         }
 #endif
 
-#if HAS_TELEMETRY && !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL) && !defined(HAS_PMU) &&                                  \
-    !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
+#if HAS_TELEMETRY && !defined(ARCH_STM32WL) && !defined(HAS_PMU) && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
         if (hasINA()) {
             return getINAVoltage();
         }
@@ -321,7 +344,6 @@ class AnalogBatteryLevel : public HasBatteryLevel
         }
         return last_read_value;
 #endif // BATTERY_PIN
-
         return 0;
     }
 
@@ -436,8 +458,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
     /// we can't be smart enough to say 'full'?
     virtual bool isCharging() override
     {
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && defined(HAS_RAKPROT) && !defined(ARCH_PORTDUINO) &&             \
-    !defined(HAS_PMU)
+#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && defined(HAS_RAKPROT) && !defined(HAS_PMU)
         if (hasRAK()) {
             return (rak9154Sensor.isCharging()) ? OptTrue : OptFalse;
         }
@@ -445,7 +466,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
 #ifdef EXT_CHRG_DETECT
         return digitalRead(EXT_CHRG_DETECT) == ext_chrg_detect_value;
 #else
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL) &&           \
+#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_STM32WL) &&                                       \
     !defined(DISABLE_INA_CHARGING_DETECTION)
         if (hasINA()) {
             // get current flow from INA sensor - negative value means power flowing into the battery
@@ -492,7 +513,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
     }
 #endif
 
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_PORTDUINO) && !defined(ARCH_STM32WL)
+#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_STM32WL)
     uint16_t getINAVoltage()
     {
         if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_INA219].first == config.power.device_battery_ina_address) {
