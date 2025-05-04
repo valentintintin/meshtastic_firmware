@@ -101,7 +101,7 @@ INA3221Sensor ina3221Sensor;
 NullSensor ina3221Sensor;
 #endif
 
-#ifdef __has_include(<MySlaveSensor.h)
+#ifdef HAS_SLAVE_SENSOR
 MySlavePowerSensor mySlavePowerSensor;
 #endif
 
@@ -287,7 +287,7 @@ class AnalogBatteryLevel : public HasBatteryLevel
             return getINAVoltage();
         }
 
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
         if (mySlavePowerSensor.isInitialized()) {
             return mySlavePowerSensor.getBusVoltageMv();
         }

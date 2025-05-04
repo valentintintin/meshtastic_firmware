@@ -75,7 +75,7 @@ extern INA3221Sensor ina3221Sensor;
 extern NullSensor ina3221Sensor;
 #endif
 
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
 #include "modules/Telemetry/Sensor/MySlaveSensors/MySlavePowerSensor.h"
 extern MySlavePowerSensor mySlavePowerSensor;
 #endif

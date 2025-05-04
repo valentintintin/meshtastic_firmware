@@ -42,9 +42,9 @@ enum RxSource {
 
 #define HOP_POSITION_RELAY_ALLOWED HOP_RELIABLE
 #define HOP_TELEMETRY_RELAY_ALLOWED HOP_RELIABLE
-#define HOP_TELEMETRY_DEVICE HOP_RELIABLE
-#define HOP_TELEMETRY_ENVIRONMENT HOP_RELIABLE
-#define HOP_TELEMETRY_AIR_QUALITY HOP_RELIABLE
+#define HOP_TELEMETRY_DEVICE 0
+#define HOP_TELEMETRY_ENVIRONMENT 0
+#define HOP_TELEMETRY_AIR_QUALITY 0
 #define HOP_TELEMETRY_POWER 0
 #define HOP_POSITION config.lora.hop_limit
 #define HOP_NEIGHBOR 0
@@ -80,3 +80,5 @@ bool isToUs(const meshtastic_MeshPacket *p);
 void fixPriority(meshtastic_MeshPacket *p);
 
 bool isBroadcast(uint32_t dest);
+
+bool isFromAdmin(const meshtastic_MeshPacket *p);

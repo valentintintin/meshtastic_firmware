@@ -1,3 +1,4 @@
+#ifdef HAS_SLAVE_SENSOR
 #include "MySlaveSensor.h"
 
 #include <time.h>
@@ -164,3 +165,4 @@ bool MySlaveSensor::getDatetime(tm *datetime) {
 
     return 1900 + datetime->tm_year >= 2025;
 }
+#endif

@@ -96,7 +96,7 @@
 #include "modules/DropzoneModule.h"
 #endif
 
-#if USE_TEXTCOMMANDMODULE
+#if !MESHTASTIC_EXCLUDE_TEXTCOMMAND
 #include "TextCommandModule.h"
 #endif
 
@@ -153,7 +153,7 @@ void setupModules()
         new PowerStressModule();
 #endif
         // Example: Put your module here
-#if USE_TEXTCOMMANDMODULE
+#if !MESHTASTIC_EXCLUDE_TEXTCOMMAND
          textCommandModule = new TextCommandModule();
 #endif
 #if (HAS_BUTTON || ARCH_PORTDUINO) && !MESHTASTIC_EXCLUDE_INPUTBROKER

@@ -1,10 +1,7 @@
-#ifndef MESHTASTIC_MySlaveEnvironmentSensor_H
-#define MESHTASTIC_MySlaveEnvironmentSensor_H
+#pragma once
+#if !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && defined(HAS_SLAVE_SENSOR)
 
 #include "configuration.h"
-
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-
 #include "MySlaveSensor.h"
 
 class MySlaveEnvironmentSensor : public MySlaveSensor {
@@ -13,4 +10,3 @@ public:
 };
 
 #endif
-#endif //MESHTASTIC_MySlaveEnvironmentSensor_H

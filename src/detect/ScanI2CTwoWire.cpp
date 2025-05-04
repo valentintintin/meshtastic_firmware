@@ -10,7 +10,7 @@
 #include "meshUtils.h" // vformat
 #endif
 
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
 #include "modules/Telemetry/Sensor/MySlaveSensors/MySlaveSensor.h"
 #endif
 
@@ -161,7 +161,7 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
                 continue;
             LOG_DEBUG("Scan address 0x%x", (uint8_t)addr.address);
         }
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
         if (addr.address == MY_SLAVE_SENSOR_ADDR) {
             i2cBus->begin();
         }
@@ -178,7 +178,7 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
         if (err != 0)
             err = 2;
 #else
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
         if (addr.address == MY_SLAVE_SENSOR_ADDR) {
             LOG_DEBUG("MY_SLAVE_SENSOR test presence");
             i2cBus->write(REG_PING);
@@ -189,7 +189,7 @@ void ScanI2CTwoWire::scanPort(I2CPort port, uint8_t *address, uint8_t asize)
         type = NONE;
         if (err == 0) {
             switch (addr.address) {
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
             case MY_SLAVE_SENSOR_ADDR:
                 LOG_INFO("MY_SLAVE_SENSOR sensor found at address 0x%x", (uint8_t)addr.address);
                 type = MY_SLAVE_SENSOR;

@@ -1,10 +1,7 @@
-#ifndef MESHTASTIC_MYSLAVESENSOR_H
-#define MESHTASTIC_MYSLAVESENSOR_H
+#pragma once
+#ifdef HAS_SLAVE_SENSOR
 
 #include "configuration.h"
-
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-
 #include "../mesh/generated/meshtastic/telemetry.pb.h"
 #include "../TelemetrySensor.h"
 
@@ -71,4 +68,3 @@ private:
 };
 
 #endif
-#endif //MESHTASTIC_MYSLAVESENSOR_H

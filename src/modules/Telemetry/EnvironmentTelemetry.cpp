@@ -169,7 +169,7 @@ T1000xSensor t1000xSensor;
 IndicatorSensor indicatorSensor;
 #endif
 
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
 #include "Sensor/MySlaveSensors/MySlaveEnvironmentSensor.h"
 MySlaveEnvironmentSensor mySlaveEnvironmentSensor;
 #endif
@@ -278,9 +278,9 @@ int32_t EnvironmentTelemetryModule::runOnce()
 
             result = rak9154Sensor.runOnce();
 #endif
-#ifdef SLAVE_SENSOR
-            if (mySlavePowerSensor.hasSensor())
-                result = mySlavePowerSensor.runOnce();
+#ifdef HAS_SLAVE_SENSOR
+            if (mySlaveEnvironmentSensor.hasSensor())
+                result = mySlaveEnvironmentSensor.runOnce();
 #endif
 #endif
         }
@@ -611,7 +611,7 @@ bool EnvironmentTelemetryModule::getEnvironmentTelemetry(meshtastic_Telemetry *m
     valid = valid && rak9154Sensor.getMetrics(m);
     hasSensor = true;
 #endif
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
     if (mySlaveEnvironmentSensor.hasSensor()) {
         valid = valid && mySlaveEnvironmentSensor.getMetrics(m);
         hasSensor = true;
@@ -832,7 +832,7 @@ AdminMessageHandleResult EnvironmentTelemetryModule::handleAdminMessageForModule
         if (result != AdminMessageHandleResult::NOT_HANDLED)
             return result;
     }
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
     if (mySlaveEnvironmentSensor.hasSensor()) {
         result = mySlaveEnvironmentSensor.handleAdminMessage(mp, request, response);
         if (result != AdminMessageHandleResult::NOT_HANDLED)

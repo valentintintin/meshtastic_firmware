@@ -2,6 +2,9 @@
 
 #define USE_SSD1306 // Heltec_v3 has a SSD1306 display
 
+#define MAX_NUM_NODES 250
+#define HOP_TELEMETRY_DEVICE 0
+
 #define RESET_OLED RST_OLED
 #define I2C_SDA SDA_OLED // I2C pins for this board
 #define I2C_SCL SCL_OLED

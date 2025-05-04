@@ -1,7 +1,6 @@
-#ifndef MESHTASTIC_TEXTCOMMANDMODULE_H
-#define MESHTASTIC_TEXTCOMMANDMODULE_H
+#pragma once
 
-#if USE_TEXTCOMMANDMODULE
+#if !MESHTASTIC_EXCLUDE_TEXTCOMMAND
 
 #include "Observer.h"
 #include "SinglePortModule.h"
@@ -56,7 +55,7 @@ private:
     static void doAsk(MyCommandParser::Argument *args, char *response);
     static void doGet(MyCommandParser::Argument *args, char *response);
     static void doSendMessage(MyCommandParser::Argument *args, char *response);
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
     static void doCommandMySlaveSensor(MyCommandParser::Argument *args, char *response);
     static void doGetResponseCommandMySlaveSensor(MyCommandParser::Argument *args, char *response);
 #endif
@@ -70,4 +69,3 @@ private:
 extern TextCommandModule *textCommandModule;
 
 #endif
-#endif //MESHTASTIC_MYSLAVESENSOR_H

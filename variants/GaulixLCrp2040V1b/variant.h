@@ -1,13 +1,4 @@
-// #define RADIOLIB_CUSTOM_ARDUINO 1
-// #define RADIOLIB_TONE_UNSUPPORTED 1
-// #define RADIOLIB_SOFTWARE_SERIAL_UNSUPPORTED 1
-
 #define ARDUINO_ARCH_AVR
-
-#define MAX_NUM_NODES 250
-#define HOP_TELEMETRY_RELAY_ALLOWED 0
-#define HOP_TELEMETRY_DEVICE 0
-#define HOP_TELEMETRY_ENVIRONMENT 0
 
 // #define USE_SH1106 1
 
@@ -19,34 +10,17 @@
 // txd = 8
 // rxd = 9
 
-//#define MAX_NUM_NODES 250
-
 #define EXT_NOTIFY_OUT 22
 #define BUTTON_PIN -1 // Pin 17 used for antenna switching via DIO4
 
 #define LED_PIN PIN_LED
 
-//#define BATTERY_PIN 26
+// #define BATTERY_PIN 26
 //  ratio of voltage divider = 3.0 (R17=200k, R18=100k)
 // #define ADC_MULTIPLIER 3.1 // 3.0 + a bit for being optimistic
-#define NUM_OCV_POINTS 11
-#define OCV_ARRAY 12700, 12500, 12420, 12320, 12200, 12060, 11900, 11750, 11580, 11310, 10500
 
-#define HAS_CPU_SHUTDOWN 0 // We do not want to shutdown even if we could
+#define HAS_CPU_SHUTDOWN 1
 #define USE_SX1262
-
-// #define RP2040_SLOW_CLOCK
-// #define MY_SLOW_CLOCK
-
-#ifdef RP2040_SLOW_CLOCK
-// Redefine UART1 serial log output to avoid collision with UART0 for GPS.
-#define SERIAL2_TX 8
-#define SERIAL2_RX 9
-// Reroute log output in SensorLib when USB is not available
-#define log_e(...) Serial2.printf(__VA_ARGS__)
-#define log_i(...) Serial2.printf(__VA_ARGS__)
-#define log_d(...) Serial2.printf(__VA_ARGS__)
-#endif
 
 #undef LORA_SCK
 #undef LORA_MISO
@@ -64,7 +38,7 @@
 #define LORA_RESET 23         // GPIO23
 #define LORA_BUSY 18          // GPIO18
 #define LORA_DIO1 16          // GPIO16
-#define LORA_DIO2 RADIOLIB_NC // Antenna switching, no GPIO connection
+#define LORA_DIO2 RADIOLIB_NC          // Antenna switching, no GPIO connection
 #define LORA_DIO3 RADIOLIB_NC // No GPIO connection
 #define LORA_DIO4 17          // GPIO17
 
@@ -78,5 +52,6 @@
 #define SX126X_RESET LORA_RESET
 #define SX126X_DIO2_AS_RF_SWITCH // Antenna switch CTRL
 #define SX126X_RXEN LORA_DIO4    // Antenna switch !CTRL via GPIO17
-// #define SX126X_DIO3_TCXO_VOLTAGE 1.8
+#define SX126X_DIO3_TCXO_VOLTAGE 1.8
+
 #endif

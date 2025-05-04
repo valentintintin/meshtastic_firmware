@@ -12,6 +12,8 @@
 #include <pb_decode.h>
 #include <pb_encode.h>
 
+#include "RadioLibInterface.h"
+
 #define RDEF(name, freq_start, freq_end, duty_cycle, spacing, power_limit, audio_permitted, frequency_switching, wide_lora)      \
     {                                                                                                                            \
         meshtastic_Config_LoRaConfig_RegionCode_##name, freq_start, freq_end, duty_cycle, spacing, power_limit, audio_permitted, \
@@ -617,6 +619,8 @@ void RadioInterface::limitPower()
     }
 
     LOG_INFO("Set radio: final power level=%d", power);
+
+    RadioLibInterface::instance->lastPower = power;
 }
 
 void RadioInterface::deliverToReceiver(meshtastic_MeshPacket *p)

@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
 #include "modules/Telemetry/Sensor/MySlaveSensors/MySlaveRtcSensor.h"
 #endif
 
@@ -89,7 +89,7 @@ void readFromRTC()
             currentQuality = RTCQualityDevice;
         }
     }
-#elif defined(SLAVE_SENSOR)
+#elif defined(HAS_SLAVE_SENSOR)
     if (rtc_found.address == MY_SLAVE_SENSOR_ADDR) {
         uint32_t now = millis();
         MySlaveRtcSensor mySlaveRtcSensor;

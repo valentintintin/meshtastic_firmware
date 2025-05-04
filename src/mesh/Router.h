@@ -11,6 +11,14 @@
 #include "RadioInterface.h"
 #include "concurrency/OSThread.h"
 
+#define MAX_PACKET_RECEIVED_TIMING MAX_NUM_NODES * 10 // Assume each node use 10 differents portNum
+
+typedef struct PacketReceivedTiming {
+  uint32_t nodeNum = 0;
+  meshtastic_PortNum portNum = meshtastic_PortNum_MAX;
+  uint64_t time = 0;
+} PacketReceivedTiming;
+
 /**
  * A mesh aware router that supports multiple interfaces.
  */
@@ -96,7 +104,9 @@ class Router : protected concurrency::OSThread, protected PacketHistory
   protected:
     friend class RoutingModule;
 
-    std::map<std::tuple<uint32_t, meshtastic_PortNum>, unsigned long> lastPacketTypeByNodeNum = {};
+    PacketReceivedTiming lastPacketReceivedTimingForNodeAndPortNum[MAX_PACKET_RECEIVED_TIMING] = {};
+    PacketReceivedTiming* getLastPacketReceivedTimingByNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
+    PacketReceivedTiming* addNewPacketReceivedTimingForNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
 
     /**
      * Should this incoming filter be dropped?

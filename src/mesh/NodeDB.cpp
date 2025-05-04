@@ -418,6 +418,15 @@ bool isBroadcast(uint32_t dest)
     return dest == NODENUM_BROADCAST || dest == NODENUM_BROADCAST_NO_LORA;
 }
 
+bool isFromAdmin(const meshtastic_MeshPacket *p) {
+    return  (config.security.admin_key[0].size == 32 &&
+              memcmp(p->public_key.bytes, config.security.admin_key[0].bytes, 32) == 0) ||
+             (config.security.admin_key[1].size == 32 &&
+              memcmp(p->public_key.bytes, config.security.admin_key[1].bytes, 32) == 0) ||
+             (config.security.admin_key[2].size == 32 &&
+              memcmp(p->public_key.bytes, config.security.admin_key[2].bytes, 32) == 0);
+}
+
 void NodeDB::resetRadioConfig(bool is_fresh_install)
 {
     if (is_fresh_install) {
@@ -808,6 +817,9 @@ void NodeDB::installDefaultModuleConfig()
     moduleConfig.neighbor_info.enabled = USERPREFS_NEIGHBOR_INFO_ENABLED;
 #ifdef USERPREFS_NEIGHBOR_INFO_INTERVAL
     moduleConfig.neighbor_info.update_interval = USERPREFS_NEIGHBOR_INFO_INTERVAL;
+#endif
+#ifdef USERPREFS_NEIGHBOR_INFO_TRANSMIT_OVER_LORA
+    moduleConfig.neighbor_info.transmit_over_lora = USERPREFS_NEIGHBOR_INFO_TRANSMIT_OVER_LORA;
 #endif
 #endif
 

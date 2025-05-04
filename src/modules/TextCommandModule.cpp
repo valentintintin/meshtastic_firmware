@@ -1,4 +1,4 @@
-#if USE_TEXTCOUSE_TEXTCOMMANDMODULEMMANDMODULE
+#if !MESHTASTIC_EXCLUDE_TEXTCOMMAND
 
 #include "NeighborInfoModule.h"
 #include "NodeInfoModule.h"
@@ -7,9 +7,6 @@
 #include "Telemetry/DeviceTelemetry.h"
 #include "Telemetry/EnvironmentTelemetry.h"
 #include "Telemetry/PowerTelemetry.h"
-#ifdef SLAVE_SENSOR
-#include "Telemetry/Sensor/MySlaveSensors/MySlaveSensor.h"
-#endif
 
 #include "configuration.h"
 #include "MeshService.h"
@@ -23,9 +20,10 @@
 
 #include "TextCommandModule.h"
 
-#ifdef SLAVE_SENSOR
-    MySlaveSensor mySlaveSensor("SlaveSensor");
-#endif
+// #ifdef HAS_SLAVE_SENSOR
+    // #include "Telemetry/Sensor/MySlaveSensors/MySlaveSensor.h"
+    // MySlaveSensor mySlaveSensor("SlaveSensor");
+// #endif
 
 TextCommandModule* textCommandModule{};
 Beacon TextCommandModule::beacon{};
@@ -48,14 +46,14 @@ TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtas
     parser.registerCommand("!get", "s", doGet);
     parser.registerCommand("!ask", "s", doAsk);
     parser.registerCommand("!msg", "sss", doSendMessage);
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
     parser.registerCommand("!cmdSlave", "s", doCommandMySlaveSensor);
     parser.registerCommand("!cmdRepSlave", "s", doGetResponseCommandMySlaveSensor);
 #endif
 }
 
 int32_t TextCommandModule::runOnce() {
-    isRouter = IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE, meshtastic_Config_DeviceConfig_Role_REPEATER);
+    isRouter = IF_ROUTER(true, false);
 
     if (updateProtoSerial) {
         serialModule->setAsConnected(true);
@@ -350,6 +348,8 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
         config.lora.tx_enabled = value[0] == '1';
     } else if (strcasecmp(key, "preset") == 0) {
         config.lora.modem_preset = static_cast<meshtastic_Config_LoRaConfig_ModemPreset>(strtoul(value, nullptr, 0));
+    } else if (strcasecmp(key, "role") == 0) {
+        config.device.role = static_cast<meshtastic_Config_DeviceConfig_Role>(strtoul(value, nullptr, 0));
     } else if (strcasecmp(key, "primaryChannel") == 0) {
         auto channel = channels.getByIndex(channels.getPrimaryIndex());
         if (strcasecmp(channel.settings.name, value) != 0) {
@@ -530,12 +530,14 @@ void TextCommandModule::doSendMessage(MyCommandParser::Argument *args, char *res
     }
 }
 
-#ifdef SLAVE_SENSOR
+#ifdef HAS_SLAVE_SENSOR
 void TextCommandModule::doCommandMySlaveSensor(MyCommandParser::Argument *args, char *response) {
+    // TODO Not implemented
     strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
 }
 
 void TextCommandModule::doGetResponseCommandMySlaveSensor(MyCommandParser::Argument *args, char *response) {
+    // TODO Not implemented
     strncpy(response, "OK", MyCommandParser::MAX_RESPONSE_SIZE);
 }
 #endif

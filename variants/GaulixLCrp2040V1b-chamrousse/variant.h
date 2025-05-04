@@ -1,8 +1,7 @@
-// #define RADIOLIB_CUSTOM_ARDUINO 1
-// #define RADIOLIB_TONE_UNSUPPORTED 1
-// #define RADIOLIB_SOFTWARE_SERIAL_UNSUPPORTED 1
-
 #define ARDUINO_ARCH_AVR
+
+#define MAX_NUM_NODES 250
+#define HOP_TELEMETRY_RELAY_ALLOWED 0
 
 // #define USE_SH1106 1
 
@@ -42,7 +41,7 @@
 #define LORA_RESET 23         // GPIO23
 #define LORA_BUSY 18          // GPIO18
 #define LORA_DIO1 16          // GPIO16
-#define LORA_DIO2 RADIOLIB_NC // Antenna switching, no GPIO connection
+#define LORA_DIO2 RADIOLIB_NC          // Antenna switching, no GPIO connection
 #define LORA_DIO3 RADIOLIB_NC // No GPIO connection
 #define LORA_DIO4 17          // GPIO17
 
@@ -56,5 +55,6 @@
 #define SX126X_RESET LORA_RESET
 #define SX126X_DIO2_AS_RF_SWITCH // Antenna switch CTRL
 #define SX126X_RXEN LORA_DIO4    // Antenna switch !CTRL via GPIO17
-// #define SX126X_DIO3_TCXO_VOLTAGE 1.8
+#define SX126X_DIO3_TCXO_VOLTAGE 1.8
+
 #endif
