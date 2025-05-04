@@ -12,11 +12,6 @@
 //                  COMMANDS, COMMAND_ARGS, COMMAND_NAME_LENGTH, COMMAND_ARG_SIZE, COMMAND_HLP_LENGTH, RESPONSE_SIZE
 typedef CommandParser<32,       3,              16,                     200,                0,              200> MyCommandParser;
 
-typedef struct {
-    const _meshtastic_NodeInfoLite *to;
-    uint64_t nbTxLeft;
-} Beacon;
-
 class TextCommandModule : public SinglePortModule, public Observable<const meshtastic_MeshPacket *>, private concurrency::OSThread {
 public:
     char response[MyCommandParser::MAX_RESPONSE_SIZE] = {};
@@ -33,10 +28,8 @@ private:
     MyCommandParser parser;
     bool isRouter = false;
 
-    uint64_t sendBeacon();
     bool sendMessage(char modemPresetName[2], char channelName[12], char message[MyCommandParser::MAX_RESPONSE_SIZE]);
 
-    static Beacon beacon;
     static bool shouldReloadConfig;
     static meshtastic_Config_LoRaConfig_ModemPreset oldLoRaModemPreset;
     static char oldPrimaryChannelName[12];
@@ -51,7 +44,6 @@ private:
     static void doGpioGet(MyCommandParser::Argument *args, char *response);
     static void doGpioGetAdc(MyCommandParser::Argument *args, char *response);
     static void doSetConfig(MyCommandParser::Argument *args, char *response);
-    static void doBeacon(MyCommandParser::Argument *args, char *response);
     static void doAsk(MyCommandParser::Argument *args, char *response);
     static void doGet(MyCommandParser::Argument *args, char *response);
     static void doSendMessage(MyCommandParser::Argument *args, char *response);

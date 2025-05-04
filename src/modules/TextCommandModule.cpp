@@ -26,7 +26,6 @@
 // #endif
 
 TextCommandModule* textCommandModule{};
-Beacon TextCommandModule::beacon{};
 bool TextCommandModule::shouldReloadConfig = false;
 meshtastic_Config_LoRaConfig_ModemPreset TextCommandModule::oldLoRaModemPreset;
 char TextCommandModule::oldPrimaryChannelName[12];
@@ -38,7 +37,6 @@ TextCommandModule::TextCommandModule() : SinglePortModule("textCommand", meshtas
     parser.registerCommand("!voisins", "", doNeighbors);
     parser.registerCommand("!noeuds", "", doNodes);
     parser.registerCommand("!noeud", "s", doSearchNode);
-    parser.registerCommand("!balise", "su", doBeacon);
     parser.registerCommand("!gpio", "uu", doGpioSet);
     parser.registerCommand("!gpioGet", "u", doGpioGet);
     parser.registerCommand("!gpioGetAdc", "u", doGpioGetAdc);
@@ -78,8 +76,6 @@ int32_t TextCommandModule::runOnce() {
         }
 
         shouldReloadConfig = false;
-    } else if (const auto newDelay = sendBeacon()) {
-        return newDelay;
     }
 
     return THREAD_INTERVAL;
@@ -133,34 +129,8 @@ bool TextCommandModule::processCommand(const char *command) {
     return true;
 }
 
-uint64_t TextCommandModule::sendBeacon() {
-    if (beacon.to == nullptr || beacon.nbTxLeft == 0) {
-        return 0;
-    }
-
-    beacon.nbTxLeft--;
-
-    meshtastic_MeshPacket *p = allocDataPacket();
-    p->to = beacon.to->num;
-    p->channel = 0;
-    p->hop_limit = beacon.to->has_hops_away ? beacon.to->hops_away : config.lora.hop_limit;
-
-    snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "!ping %llu\nSNR: %.2f", beacon.nbTxLeft, beacon.to->snr);
-
-    p->decoded.payload.size = strlen(response);
-    memcpy(p->decoded.payload.bytes, response, p->decoded.payload.size);
-
-    service->sendToMesh(p);
-
-    return THREAD_INTERVAL * (beacon.to->hops_away + 1);
-}
-
 bool TextCommandModule::sendMessage(char modemPresetName[2], char channelName[12], char message[200]) {
     if (!router) {
-        return false;
-    }
-
-    if (beacon.nbTxLeft > 0) {
         return false;
     }
 
@@ -429,29 +399,6 @@ void TextCommandModule::doSetConfig(MyCommandParser::Argument *args, char *respo
             rebootAtMsec = millis() + DEFAULT_REBOOT_SECONDS * 1000;
         }
     }
-}
-
-void TextCommandModule::doBeacon(MyCommandParser::Argument *args, char *response) {
-    const auto nodeIdOrName = args[0].asString;
-    const auto node = findNode(nodeIdOrName);
-
-    if (!node || !node->has_user || node->user.public_key.size == 0) {
-        beacon.to = nullptr;
-        snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "%s pas trouvé", nodeIdOrName);
-        return;
-    }
-
-    LOG_DEBUG("Found node with id 0x%x", node->num);
-
-    beacon.to = node;
-    beacon.nbTxLeft = args[1].asUInt64;
-
-    snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "Balise activé en direction de !%x toutes les %d secondes (%d sauts) et %llu fois",
-        node->num, THREAD_INTERVAL * (node->hops_away + 1) / 1000,
-        node->has_hops_away ? node->hops_away : config.lora.hop_limit,
-        beacon.nbTxLeft);
-
-    LOG_DEBUG("Beacon OK %s", response);
 }
 
 void TextCommandModule::doAsk(MyCommandParser::Argument *args, char *response) {

@@ -11,7 +11,8 @@
 #include "RadioInterface.h"
 #include "concurrency/OSThread.h"
 
-#define MAX_PACKET_RECEIVED_TIMING MAX_NUM_NODES * 10 // Assume each node use 10 differents portNum
+#define PORTSNUM_TO_SAVE_RECEIVED_TIMING meshtastic_PortNum_NODEINFO_APP, meshtastic_PortNum_TELEMETRY_APP, meshtastic_PortNum_POSITION_APP, meshtastic_PortNum_TRACEROUTE_APP
+#define MAX_PACKET_RECEIVED_TIMING MAX_NUM_NODES * 4 // Assume each node use (traceroute, telemetrie, nodeinfo, position) portNums
 
 typedef struct PacketReceivedTiming {
   uint32_t nodeNum = 0;

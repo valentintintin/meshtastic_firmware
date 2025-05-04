@@ -69,12 +69,13 @@ void FloodingRouter::perhapsRebroadcast(const meshtastic_MeshPacket *p)
     if (!isToUs(p) && p->hop_limit > 0 && !isFromUs(p)) {
         if (p->id != 0) {
             if (isRebroadcaster()) {
-                meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
-
-                if (config.device.role == meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN && (!isFromAdmin(p) || !config.device.disable_triple_click)) {
+                if (config.device.role == meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN
+                    && (!isFromAdmin(p) || !config.device.disable_triple_click)) {
                      LOG_INFO("No rebroadcast: Role = CLIENT_HIDDEN and not from admin or low power disabled");
                      return;
                 }
+
+                meshtastic_MeshPacket *tosend = packetPool.allocCopy(*p); // keep a copy because we will be sending it
 
                 if (IF_ROUTER(!config.device.disable_triple_click, true)) { // If router and option disabled then decrement hop
                     tosend->hop_limit--; // bump down the hop count

@@ -4,6 +4,8 @@
 
 #define ARDUINO_ARCH_AVR
 
+#define MAX_NUM_NODES 250
+
 // #define USE_SH1106 1
 
 // default I2C pins:

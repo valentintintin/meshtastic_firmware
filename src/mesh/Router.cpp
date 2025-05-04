@@ -221,6 +221,10 @@ PacketReceivedTiming* Router::getLastPacketReceivedTimingByNodeAndPortNum(uint32
 }
 
 PacketReceivedTiming* Router::addNewPacketReceivedTimingForNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum) {
+    if (!IS_ONE_OF(portNum, PORTSNUM_TO_SAVE_RECEIVED_TIMING)) {
+        return nullptr;
+    }
+
     if (PacketReceivedTiming* packet = getLastPacketReceivedTimingByNodeAndPortNum(nodeNum, portNum)) {
         packet->time = millis();
         return packet;
@@ -679,7 +683,9 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
             // skipHandle = true; // We want it on MQTT
         }
 
-        if (shouldIgnoreNonstandardPorts && !isToUs(p)) {
+        if (shouldIgnoreNonstandardPorts && !isToUs(p)
+            && p->which_payload_variant == meshtastic_MeshPacket_decoded_tag
+            && IS_ONE_OF(p->decoded.portnum, PORTSNUM_TO_SAVE_RECEIVED_TIMING)) {
             const auto lastPacketReceivedTiming = getLastPacketReceivedTimingByNodeAndPortNum(p->from, p->decoded.portnum);
 
             if (lastPacketReceivedTiming != nullptr) {
