@@ -22,8 +22,7 @@ int32_t DeviceTelemetryModule::runOnce()
     refreshUptime();
     bool isImpoliteRole =
         IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
-    bool shouldTxOnLora = IF_ROUTER(true, moduleConfig.neighbor_info.transmit_over_lora || config.power.is_power_saving);
-    if (shouldTxOnLora && ((lastSentToMesh == 0) ||
+    if (customSettings.sendDeviceTelemetry && ((lastSentToMesh == 0) ||
          ((uptimeLastMs - lastSentToMesh) >=
           Default::getConfiguredOrDefaultMsScaled(moduleConfig.telemetry.device_update_interval,
                                                   default_telemetry_broadcast_interval_secs, numOnlineNodes))) &&
@@ -35,7 +34,7 @@ int32_t DeviceTelemetryModule::runOnce()
     } else if (service->isToPhoneQueueEmpty()) {
         // Just send to phone when it's not our time to send to mesh yet
         // Only send while queue is empty (phone assumed connected)
-        sendTelemetry(NODENUM_BROADCAST, true);
+        sendTelemetry(NODENUM_BROADCAST_NO_LORA, true);
         if (lastSentStatsToPhone == 0 || (uptimeLastMs - lastSentStatsToPhone) >= sendStatsToPhoneIntervalMs) {
             sendLocalStatsToPhone();
             lastSentStatsToPhone = uptimeLastMs;
@@ -165,9 +164,11 @@ void DeviceTelemetryModule::sendLocalStatsToPhone()
 
 bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 {
-    meshtastic_Telemetry telemetry = IF_ROUTER(lastVariantSent == meshtastic_Telemetry_local_stats_tag ? getDeviceTelemetry() : getLocalStatsTelemetry(), getDeviceTelemetry());
+    meshtastic_Telemetry telemetry = lastVariantSent == meshtastic_Telemetry_device_metrics_tag && customSettings.switchBetweenDeviceAndLocalTelemetry && isBroadcast(dest) ? getLocalStatsTelemetry() : getDeviceTelemetry();
 
-    lastVariantSent = telemetry.which_variant;
+    if (isBroadcast(dest)) {
+        lastVariantSent = telemetry.which_variant;
+    }
 
     if (telemetry.which_variant == meshtastic_Telemetry_device_metrics_tag) {
         LOG_INFO("Send: air_util_tx=%f, channel_utilization=%f, battery_level=%i, voltage=%f, uptime=%i",
@@ -184,7 +185,7 @@ bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->to = dest;
     if (isBroadcast(dest)) {
-        p->hop_limit = HOP_TELEMETRY_DEVICE;
+        p->hop_limit = customSettings.hops.hopsDeviceTelemetry;
     }
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
@@ -192,10 +193,9 @@ bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
     nodeDB->updateTelemetry(nodeDB->getNodeNum(), telemetry, RX_SRC_LOCAL);
     if (phoneOnly) {
         LOG_INFO("Send packet to phone");
-        service->sendToPhone(p);
     } else {
         LOG_INFO("Send packet to mesh");
-        service->sendToMesh(p, RX_SRC_LOCAL, true);
     }
+    service->sendToMesh(p, RX_SRC_LOCAL, true);
     return true;
 }

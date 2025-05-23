@@ -209,9 +209,9 @@ ErrorCode Router::rawSend(meshtastic_MeshPacket *p)
     return iface->send(p);
 }
 
-PacketReceivedTiming* Router::getLastPacketReceivedTimingByNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum) {
-    for (int i = 0; i < MAX_PACKET_RECEIVED_TIMING; i++) {
-        auto packet = &lastPacketReceivedTimingForNodeAndPortNum[i];
+PacketReceivedTiming* Router::getLastPacketReceivedTimingByNodeAndPortNum(const uint32_t nodeNum, const meshtastic_PortNum portNum) {
+    for (uint16_t i = 0; i < numPacketReceivedTimings; i++) {
+        const auto packet = &lastPacketReceivedTimingForNodeAndPortNum.at(i);
         if (packet->nodeNum == nodeNum && packet->portNum == portNum) {
             return packet;
         }
@@ -220,29 +220,49 @@ PacketReceivedTiming* Router::getLastPacketReceivedTimingByNodeAndPortNum(uint32
     return nullptr;
 }
 
-PacketReceivedTiming* Router::addNewPacketReceivedTimingForNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum) {
+PacketReceivedTiming* Router::addNewPacketReceivedTimingForNodeAndPortNum(const uint32_t nodeNum, const meshtastic_PortNum portNum) {
     if (!IS_ONE_OF(portNum, PORTSNUM_TO_SAVE_RECEIVED_TIMING)) {
         return nullptr;
     }
 
-    if (PacketReceivedTiming* packet = getLastPacketReceivedTimingByNodeAndPortNum(nodeNum, portNum)) {
+    if (const auto packet = getLastPacketReceivedTimingByNodeAndPortNum(nodeNum, portNum)) {
+        LOG_DEBUG("Packet portnum %d sent from 0x%x at %lu ms replace old one at %lu ms", portNum, nodeNum, millis(), packet->time);
         packet->time = millis();
         return packet;
     }
 
-    for (int i = 0; i < MAX_PACKET_RECEIVED_TIMING; i++) {
-        auto packet = &lastPacketReceivedTimingForNodeAndPortNum[i];
-        if (packet->nodeNum == 0 && packet->portNum == meshtastic_PortNum_MAX) {
-            packet->nodeNum = nodeNum;
-            packet->portNum = portNum;
-            packet->time = millis();
-            return packet;
+    if (numPacketReceivedTimings >= MAX_PACKET_RECEIVED_TIMING || memGet.getFreeHeap() < MINIMUM_SAFE_FREE_HEAP) {
+        uint32_t oldest = UINT32_MAX;
+        int oldestIndex = -1;
+
+        for (int i = 1; i < numPacketReceivedTimings; i++) {
+            // Simply the oldest packets
+            if (lastPacketReceivedTimingForNodeAndPortNum.at(i).time < oldest) {
+                oldest = lastPacketReceivedTimingForNodeAndPortNum.at(i).time;
+                oldestIndex = i;
+            }
+        }
+
+        if (oldestIndex != -1) {
+            LOG_DEBUG("Packet portnum %d sent from 0x%x at %lu ms is too old so removed", portNum, nodeNum, lastPacketReceivedTimingForNodeAndPortNum.at(oldestIndex).time);
+
+            // Shove the remaining packets down the chain
+            for (int i = oldestIndex; i < numPacketReceivedTimings - 1; i++) {
+                lastPacketReceivedTimingForNodeAndPortNum.at(i) = lastPacketReceivedTimingForNodeAndPortNum.at(i + 1);
+            }
+            numPacketReceivedTimings--;
         }
     }
 
-    LOG_WARN("No more space available for Last packet received timing");
+    // add the packet at the end
+    const auto packet = &lastPacketReceivedTimingForNodeAndPortNum.at(numPacketReceivedTimings++);
+    packet->nodeNum = nodeNum;
+    packet->portNum = portNum;
+    packet->time = millis();
 
-    return nullptr;
+    LOG_DEBUG("Packet portnum %d sent from 0x%x at %lu ms added", portNum, nodeNum, millis());
+
+    return packet;
 }
 
 /**
@@ -683,68 +703,44 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
             // skipHandle = true; // We want it on MQTT
         }
 
-        if (shouldIgnoreNonstandardPorts && !isToUs(p)
-            && p->which_payload_variant == meshtastic_MeshPacket_decoded_tag
-            && IS_ONE_OF(p->decoded.portnum, PORTSNUM_TO_SAVE_RECEIVED_TIMING)) {
+        if (customSettings.useFiltering && !isToUs(p)
+            && p->which_payload_variant == meshtastic_MeshPacket_decoded_tag) {
+            LOG_DEBUG("Packet portnum %d perhaps filtered", p->decoded.portnum);
+
             const auto lastPacketReceivedTiming = getLastPacketReceivedTimingByNodeAndPortNum(p->from, p->decoded.portnum);
 
             if (lastPacketReceivedTiming != nullptr) {
                 const auto nbHops = p->hop_start - p->hop_limit;
-                bool shouldFilter = false;
-                uint32_t compareTime = 0;
-                uint8_t compareHops = 999;
+                const auto diffSinceLast = millis() - lastPacketReceivedTiming->time;
 
-                switch (p->decoded.portnum) {
-                    case meshtastic_PortNum_NODEINFO_APP: {
-                        shouldFilter = true;
-                        compareTime = TIME_BETWEEN_RELAY_NODEINFO;
+                LOG_DEBUG("Packet portnum %d with %d hops was already sent by 0x%x at %lu ms (diff %lu ms)", p->decoded.portnum, nbHops, p->from, lastPacketReceivedTiming->time, diffSinceLast);
 
-                        LOG_DEBUG("Packet type nodeinfo should filter last seen %llu <= %d", lastPacketReceivedTiming->time, compareTime);
+                const CustomSettingsFiltering *filterToUse = nullptr;
+
+                for (CustomSettingsFiltering &f : customSettings.filtering) {
+                    CustomSettingsFiltering *filter = &f;
+                    if (filter->enabled && filter->portNum == p->decoded.portnum) {
+                        filterToUse = filter;
+                        break;
                     }
-                        break;
-                    case meshtastic_PortNum_TELEMETRY_APP: {
-                        shouldFilter = isBroadcast(p->to);
-                        compareTime = TIME_BETWEEN_RELAY_TELEMETRY;
-                        compareHops = HOP_TELEMETRY_RELAY_ALLOWED;
-
-                        if (shouldFilter) {
-                            LOG_DEBUG("Packet type telemetry broadcast should filter last seen %llu <= %d and %d hops should <= %d", lastPacketReceivedTiming->time, nbHops, compareTime, compareTime);
-                        }
-                    }
-                        break;
-                    case meshtastic_PortNum_POSITION_APP: {
-                        shouldFilter = true;
-                        compareTime = TIME_BETWEEN_RELAY_POSITION;
-
-                        LOG_DEBUG("Packet type position should filter last seen %llu <= %d", lastPacketReceivedTiming->time, compareTime);
-                    }
-                        break;
-                    case meshtastic_PortNum_TRACEROUTE_APP: {
-                        shouldFilter = true;
-                        compareTime = TIME_BETWEEN_RELAY_TRACEROUTE;
-
-                        LOG_DEBUG("Packet type traceroute should filter last seen %llu <= %d", lastPacketReceivedTiming->time, compareTime);
-                    }
-                        break;
-                    default:
-                        break;
                 }
 
-                if (shouldFilter) {
-                    if (compareTime && Throttle::isWithinTimespanMs(lastPacketReceivedTiming->time, compareTime)) {
-                        LOG_DEBUG("Ignore packet because lastSeen %llu < %d", millis() - lastPacketReceivedTiming->time, compareTime);
-                        cancelSending(p->from, p->id);
-                        // skipHandle = true; // We want it on MQTT
-                    }
+                if (filterToUse != nullptr) {
+                    const auto timeAllowed = !Throttle::isWithinTimespanMs(lastPacketReceivedTiming->time, filterToUse->timeBetweenFramesSec);
+                    const auto hopsAllowed = nbHops >= filterToUse->hopRelayAllowed;
 
-                    if (!skipHandle && nbHops >= compareHops) {
-                        LOG_DEBUG("Ignore packet because hop (%d) max allowed (%d) reached", nbHops, compareHops);
+                    LOG_DEBUG("Packet received from 0x%x and portnum %d = time allowed: %d (lastSeen %lu < %d) and hops allowed: %d (%d max allowed %d)", p->from, p->decoded.portnum, timeAllowed, diffSinceLast, filterToUse->timeBetweenFramesSec, hopsAllowed, nbHops, filterToUse->hopRelayAllowed);
+
+                    if (!timeAllowed || !hopsAllowed) {
+                        LOG_WARN("Ignore packet received from 0x%x and portnum %d!", p->from, p->decoded.portnum);
                         cancelSending(p->from, p->id);
                         // skipHandle = true; // We want it on MQTT
                     }
+                } else {
+                    LOG_DEBUG("Packet received from 0x%x and portnum %d should not be filtered", p->from, p->decoded.portnum);
                 }
             } else {
-                LOG_DEBUG("Last packet received timing not found");
+                LOG_DEBUG("Last packet received timing not found for 0x%x and portnum %d", p->from, p->decoded.portnum);
             }
         }
     } else {
@@ -753,7 +749,7 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
 
     // call modules here
     if (!skipHandle) {
-        if (decodedState == DECODE_SUCCESS) { // Aka portnum known
+        if (decodedState == DECODE_SUCCESS && customSettings.useFiltering) {
             addNewPacketReceivedTimingForNodeAndPortNum(p->from, p->decoded.portnum);
         }
 

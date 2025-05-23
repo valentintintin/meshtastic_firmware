@@ -188,6 +188,8 @@ meshtastic_CriticalErrorCode error_code =
     meshtastic_CriticalErrorCode_NONE; // For the error code, only show values from this boot (discard value from flash)
 uint32_t error_address = 0;
 
+CustomSettings customSettings;
+
 static uint8_t ourMacAddr[6];
 
 NodeDB::NodeDB()
@@ -940,6 +942,7 @@ void NodeDB::installDefaultModuleConfig()
     initModuleConfigIntervals();
 }
 
+// Maybe unmessagable with TextCommandModule will be unoying ?
 void NodeDB::installRoleDefaults(meshtastic_Config_DeviceConfig_Role role)
 {
     if (role == meshtastic_Config_DeviceConfig_Role_ROUTER) {
@@ -1368,6 +1371,17 @@ void NodeDB::loadFromDisk()
 
         saveToDisk(SEGMENT_MODULECONFIG);
     }
+
+    state = loadCustomSettings();
+    if (state == LoadFileResult::LOAD_SUCCESS) {
+        LOG_INFO("Loaded custom settings");
+    }
+
+    if (state != LoadFileResult::LOAD_SUCCESS || customSettings.version < SETTINGS_VERSION) {
+        LOG_WARN("Settings version %d is stale or failed to load, upgrading to new default", customSettings.version);
+        customSettings = CustomSettings();
+        saveToDisk(SEGMENT_CUSTOM_SETTINGS);
+    }
 }
 
 /** Save a protobuf from a file, return true for success */
@@ -1390,6 +1404,50 @@ bool NodeDB::saveProto(const char *filename, size_t protoSize, const pb_msgdesc_
     bool writeSucceeded = f.close();
 
     if (!okay || !writeSucceeded) {
+        LOG_ERROR("Can't write prefs!");
+    }
+#else
+    LOG_ERROR("ERROR: Filesystem not implemented");
+#endif
+    return okay;
+}
+
+LoadFileResult NodeDB::loadCustomSettings() {
+    LoadFileResult state = LoadFileResult::OTHER_FAILURE;
+#ifdef FSCom
+    concurrency::LockGuard g(spiLock);
+
+    auto f = FSCom.open(customSettingsFileName, FILE_O_READ);
+
+    if (f) {
+        LOG_INFO("Load %s", customSettingsFileName);
+
+        f.read(reinterpret_cast<uint8_t *>(&customSettings), sizeof(customSettings));
+        f.close();
+
+        LOG_INFO("Loaded %s successfully", customSettingsFileName);
+        state = LoadFileResult::LOAD_SUCCESS;
+    } else {
+        LOG_ERROR("Could not open / read %s", customSettingsFileName);
+    }
+#else
+    LOG_ERROR("ERROR: Filesystem not implemented");
+    state = LoadFileResult::NO_FILESYSTEM;
+#endif
+    return state;
+}
+
+bool NodeDB::saveCustomSettingsToDisk() {
+    bool okay = false;
+#ifdef FSCom
+    auto f = SafeFile(customSettingsFileName);
+
+    LOG_INFO("Save %s", customSettingsFileName);
+
+    f.write(reinterpret_cast<const uint8_t *>(&customSettings), sizeof(customSettings));
+    okay = f.close();
+
+    if (!okay) {
         LOG_ERROR("Can't write prefs!");
     }
 #else
@@ -1481,6 +1539,10 @@ bool NodeDB::saveToDiskNoRetry(int saveWhat)
 
     if (saveWhat & SEGMENT_NODEDATABASE) {
         success &= saveNodeDatabaseToDisk();
+    }
+
+    if (saveWhat & SEGMENT_CUSTOM_SETTINGS) {
+        success &= saveCustomSettingsToDisk();
     }
 
     return success;

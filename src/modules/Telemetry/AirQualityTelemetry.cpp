@@ -210,7 +210,7 @@ bool AirQualityTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
         meshtastic_MeshPacket *p = allocDataProtobuf(m);
         p->to = dest;
         if (isBroadcast(dest)) {
-            p->hop_limit = HOP_TELEMETRY_AIR_QUALITY;
+            p->hop_limit = customSettings.hops.hopsAirQualityTelemetry;
         }
         p->decoded.want_response = false;
         if (config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR)

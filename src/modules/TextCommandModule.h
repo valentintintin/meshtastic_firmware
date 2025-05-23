@@ -33,8 +33,8 @@ private:
     static bool shouldReloadConfig;
     static meshtastic_Config_LoRaConfig_ModemPreset oldLoRaModemPreset;
     static char oldPrimaryChannelName[12];
-    static meshtastic_NodeInfoLite *sortedNodeHeards[MAX_NUM_NODES];
-    static bool updateProtoSerial;
+    static bool setProtoSerialAsConnected;
+    const static SettingsGetSetFunction settingsGetSetFunctions[NB_SETTINGS];
 
     static void doPing(MyCommandParser::Argument *args, char *response);
     static void doNeighbors(MyCommandParser::Argument *args, char *response);
@@ -43,9 +43,9 @@ private:
     static void doGpioSet(MyCommandParser::Argument *args, char *response);
     static void doGpioGet(MyCommandParser::Argument *args, char *response);
     static void doGpioGetAdc(MyCommandParser::Argument *args, char *response);
-    static void doSetConfig(MyCommandParser::Argument *args, char *response);
+    static void doSetSettings(MyCommandParser::Argument *args, char *response);
     static void doAsk(MyCommandParser::Argument *args, char *response);
-    static void doGet(MyCommandParser::Argument *args, char *response);
+    static void doGetSettings(MyCommandParser::Argument *args, char *response);
     static void doSendMessage(MyCommandParser::Argument *args, char *response);
 #ifdef HAS_SLAVE_SENSOR
     static void doCommandMySlaveSensor(MyCommandParser::Argument *args, char *response);

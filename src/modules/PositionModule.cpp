@@ -363,7 +363,7 @@ void PositionModule::sendOurPosition(NodeNum dest, bool wantReplies, uint8_t cha
     prevPacketId = p->id;
 
     if (isBroadcast(dest)) {
-        p->hop_limit = HOP_POSITION;
+        p->hop_limit = customSettings.hops.hopsPosition;
     }
 
     if (channel > 0)

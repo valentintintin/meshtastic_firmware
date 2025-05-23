@@ -512,7 +512,7 @@ bool RadioLibInterface::startSend(meshtastic_MeshPacket *txp)
 
         size_t numbytes = beginSending(txp);
 
-        if (config.device.role == meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN && config.device.disable_triple_click) {
+        if (config.device.role == meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN && customSettings.clientHidden.enabled && customSettings.clientHidden.changePower) {
             int8_t power = config.lora.tx_power;
 
             if (!isFromUs(txp) && !isFromAdmin(txp)) {

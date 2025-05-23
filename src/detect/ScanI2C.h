@@ -71,7 +71,8 @@ class ScanI2C
         DPS310,
         LTR390UV,
         TCA8418KB,
-        MY_SLAVE_SENSOR
+        MY_SLAVE_SENSOR,
+        ANEMOMETER
     } DeviceType;
 
     // typedef uint8_t DeviceAddress;

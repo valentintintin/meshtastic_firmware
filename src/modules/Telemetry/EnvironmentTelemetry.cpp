@@ -174,6 +174,11 @@ IndicatorSensor indicatorSensor;
 MySlaveEnvironmentSensor mySlaveEnvironmentSensor;
 #endif
 
+#ifdef HAS_ANEMOMETER
+#include "Sensor/Anemometer.h"
+Anemometer anemometer;
+#endif
+
 #define FAILED_STATE_SENSOR_READ_MULTIPLIER 10
 #define DISPLAY_RECEIVEID_MEASUREMENTS_ON_SCREEN true
 
@@ -281,6 +286,10 @@ int32_t EnvironmentTelemetryModule::runOnce()
 #ifdef HAS_SLAVE_SENSOR
             if (mySlaveEnvironmentSensor.hasSensor())
                 result = mySlaveEnvironmentSensor.runOnce();
+#endif
+#ifdef HAS_ANEMOMETER
+            if (anemometer.hasSensor())
+                result = anemometer.runOnce();
 #endif
 #endif
         }
@@ -617,6 +626,12 @@ bool EnvironmentTelemetryModule::getEnvironmentTelemetry(meshtastic_Telemetry *m
         hasSensor = true;
     }
 #endif
+#ifdef HAS_ANEMOMETER
+    if (anemometer.hasSensor()) {
+        valid = valid && anemometer.getMetrics(m);
+        hasSensor = true;
+    }
+#endif
 #endif
     return valid && hasSensor;
 }
@@ -676,7 +691,7 @@ bool EnvironmentTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
         meshtastic_MeshPacket *p = allocDataProtobuf(m);
         p->to = dest;
         if (isBroadcast(dest)) {
-            p->hop_limit = HOP_TELEMETRY_ENVIRONMENT;
+            p->hop_limit = customSettings.hops.hopsEnvironmentTelemetry;
         }
         p->decoded.want_response = false;
         if (config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR)

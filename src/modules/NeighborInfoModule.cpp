@@ -111,7 +111,9 @@ void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies)
     p->to = dest;
     p->decoded.want_response = wantReplies;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
-    p->hop_limit = HOP_NEIGHBOR;
+    if (isBroadcast(dest)) {
+        p->hop_limit = customSettings.hops.hopsNeighbor;
+    }
     printNeighborInfo("SENDING", &neighborInfo);
     service->sendToMesh(p, RX_SRC_LOCAL, true);
 }
@@ -127,7 +129,6 @@ int32_t NeighborInfoModule::runOnce()
 
     const bool transmitOverLora = moduleConfig.neighbor_info.transmit_over_lora
     || !HAS_NETWORKING
-    || isImpoliteRole
     || !config.has_network || !moduleConfig.has_mqtt;
 
     if (transmitOverLora &&

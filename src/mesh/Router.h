@@ -1,7 +1,5 @@
 #pragma once
 
-#include <map>
-
 #include "Channels.h"
 #include "MemoryPool.h"
 #include "MeshTypes.h"
@@ -11,13 +9,12 @@
 #include "RadioInterface.h"
 #include "concurrency/OSThread.h"
 
-#define PORTSNUM_TO_SAVE_RECEIVED_TIMING meshtastic_PortNum_NODEINFO_APP, meshtastic_PortNum_TELEMETRY_APP, meshtastic_PortNum_POSITION_APP, meshtastic_PortNum_TRACEROUTE_APP
-#define MAX_PACKET_RECEIVED_TIMING MAX_NUM_NODES * 4 // Assume each node use (traceroute, telemetrie, nodeinfo, position) portNums
+#define MAX_PACKET_RECEIVED_TIMING (MAX_NUM_NODES * MAX_FILTERING)
 
 typedef struct PacketReceivedTiming {
   uint32_t nodeNum = 0;
   meshtastic_PortNum portNum = meshtastic_PortNum_MAX;
-  uint64_t time = 0;
+  uint32_t time = 0;
 } PacketReceivedTiming;
 
 /**
@@ -105,10 +102,6 @@ class Router : protected concurrency::OSThread, protected PacketHistory
   protected:
     friend class RoutingModule;
 
-    PacketReceivedTiming lastPacketReceivedTimingForNodeAndPortNum[MAX_PACKET_RECEIVED_TIMING] = {};
-    PacketReceivedTiming* getLastPacketReceivedTimingByNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
-    PacketReceivedTiming* addNewPacketReceivedTimingForNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
-
     /**
      * Should this incoming filter be dropped?
      *
@@ -131,6 +124,11 @@ class Router : protected concurrency::OSThread, protected PacketHistory
     void sendAckNak(meshtastic_Routing_Error err, NodeNum to, PacketId idFrom, ChannelIndex chIndex, uint8_t hopLimit = 0);
 
   private:
+    std::vector<PacketReceivedTiming> lastPacketReceivedTimingForNodeAndPortNum = std::vector<PacketReceivedTiming>(MAX_PACKET_RECEIVED_TIMING);
+    uint16_t numPacketReceivedTimings = 0;
+    PacketReceivedTiming* getLastPacketReceivedTimingByNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
+    PacketReceivedTiming* addNewPacketReceivedTimingForNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
+
     /**
      * Called from loop()
      * Handle any packet that is received by an interface on this node.

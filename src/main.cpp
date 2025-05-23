@@ -698,6 +698,10 @@ void setup()
     LOG_DEBUG("acc_info = %i", acc_info.type);
 #endif
 
+#ifdef HAS_ANEMOMETER
+    nodeTelemetrySensorsMap[ScanI2C::DeviceType::ANEMOMETER].first = 1;
+#endif
+
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::MY_SLAVE_SENSOR, meshtastic_TelemetrySensorType_SENSOR_UNSET);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BME_680, meshtastic_TelemetrySensorType_BME680);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BME_280, meshtastic_TelemetrySensorType_BME280);
