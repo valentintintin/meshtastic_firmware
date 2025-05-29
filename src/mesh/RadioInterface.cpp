@@ -530,8 +530,8 @@ void RadioInterface::applyModemConfig()
 
     power = loraConfig.tx_power;
 
-    if ((power == 0) || ((power + REGULATORY_GAIN_LORA > myRegion->powerLimit) && !devicestate.owner.is_licensed))
-        power = myRegion->powerLimit - REGULATORY_GAIN_LORA;
+    if ((power == 0) || ((power > myRegion->powerLimit) && !devicestate.owner.is_licensed))
+        power = myRegion->powerLimit;
 
     if (power == 0)
         power = 17; // Default to this power level if we don't have a valid regional power limit (powerLimit of myRegion defaults
@@ -618,7 +618,12 @@ void RadioInterface::limitPower()
         power = maxPower;
     }
 
-    LOG_INFO("Set radio: final power level=%d", power);
+    if (TX_GAIN_LORA > 0) {
+        LOG_INFO("Requested Tx power: %d dBm; Device LoRa Tx gain: %d dB", power, TX_GAIN_LORA);
+        power -= TX_GAIN_LORA;
+    }
+
+    LOG_INFO("Final Tx power: %d dBm", power);
 
     RadioLibInterface::instance->lastPower = power;
 }
