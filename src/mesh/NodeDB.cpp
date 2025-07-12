@@ -426,7 +426,7 @@ bool isBroadcast(uint32_t dest)
 }
 
 bool isFromAdmin(const meshtastic_MeshPacket *p) {
-    return  (config.security.admin_key[0].size == 32 &&
+    return isFromUs(p) || (config.security.admin_key[0].size == 32 &&
               memcmp(p->public_key.bytes, config.security.admin_key[0].bytes, 32) == 0) ||
              (config.security.admin_key[1].size == 32 &&
               memcmp(p->public_key.bytes, config.security.admin_key[1].bytes, 32) == 0) ||

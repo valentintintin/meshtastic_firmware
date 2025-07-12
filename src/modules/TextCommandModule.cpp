@@ -31,7 +31,7 @@ meshtastic_Config_LoRaConfig_ModemPreset TextCommandModule::oldLoRaModemPreset;
 char TextCommandModule::oldPrimaryChannelName[12];
 bool TextCommandModule::setProtoSerialAsConnected = false;
 const SettingsGetSetFunction TextCommandModule::settingsGetSetFunctions[NB_SETTINGS] = {
-    { "version", UInt16, &customSettings.version },
+    { "customVersion", UInt16, &customSettings.version },
     { "decrementHops", Boolean, &customSettings.decrementHops },
     { "sendDeviceTelem", Boolean, &customSettings.sendDeviceTelemetry },
     { "telemSwitchType", Boolean, &customSettings.switchBetweenDeviceAndLocalTelemetry },
@@ -653,6 +653,8 @@ void TextCommandModule::doGetSettings(MyCommandParser::Argument *args, char *res
         strncpy(response, channel.settings.name, MyCommandParser::MAX_RESPONSE_SIZE);
     } else if (strcasecmp(key, "ram") == 0) {
         snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "Heap: %u/%u", memGet.getFreeHeap(), memGet.getHeapSize());
+    } else if (strcasecmp(key, "version") == 0) {
+        snprintf(response, MyCommandParser::MAX_RESPONSE_SIZE, "%s", optstr(APP_VERSION));
     } else {
         strncpy(response, "KO pas compris", MyCommandParser::MAX_RESPONSE_SIZE);
     }
