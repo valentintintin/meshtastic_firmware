@@ -8,21 +8,29 @@
 #include "PointerQueue.h"
 #include "RadioInterface.h"
 #include "concurrency/OSThread.h"
+#include <map>
+
+#define MAX_PACKET_RECEIVED_TIMING (MAX_NUM_NODES * MAX_FILTERING)
+
+typedef struct PacketReceivedTiming {
+    uint32_t nodeNum = 0;
+    meshtastic_PortNum portNum = meshtastic_PortNum_MAX;
+    uint32_t time = 0;
+} PacketReceivedTiming;
 
 /**
  * A mesh aware router that supports multiple interfaces.
  */
-class Router : protected concurrency::OSThread, protected PacketHistory
-{
-  private:
+class Router : protected concurrency::OSThread, protected PacketHistory {
+private:
     /// Packets which have just arrived from the radio, ready to be processed by this service and possibly
     /// forwarded to the phone.
     PointerQueue<meshtastic_MeshPacket> fromRadioQueue;
 
-  protected:
+protected:
     RadioInterface *iface = NULL;
 
-  public:
+public:
     /**
      * Constructor
      *
@@ -85,13 +93,22 @@ class Router : protected concurrency::OSThread, protected PacketHistory
      * NOTE: This method will free the provided packet (even if we return an error code)
      */
     virtual ErrorCode send(meshtastic_MeshPacket *p);
+
     virtual ErrorCode rawSend(meshtastic_MeshPacket *p);
 
     /* Statistics for the amount of duplicate received packets and the amount of times we cancel a relay because someone did it
         before us */
     uint32_t rxDupe = 0, txRelayCanceled = 0;
 
-  protected:
+protected:
+    std::vector<PacketReceivedTiming> lastPacketReceivedTimingForNodeAndPortNum = std::vector<PacketReceivedTiming>(
+        MAX_PACKET_RECEIVED_TIMING);
+    uint16_t numPacketReceivedTimings = 0;
+
+    PacketReceivedTiming *getLastPacketReceivedTimingByNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
+
+    PacketReceivedTiming *addNewPacketReceivedTimingForNodeAndPortNum(uint32_t nodeNum, meshtastic_PortNum portNum);
+
     friend class RoutingModule;
 
     /**
@@ -113,9 +130,10 @@ class Router : protected concurrency::OSThread, protected PacketHistory
     /**
      * Send an ack or a nak packet back towards whoever sent idFrom
      */
-    void sendAckNak(meshtastic_Routing_Error err, NodeNum to, PacketId idFrom, ChannelIndex chIndex, uint8_t hopLimit = 0);
+    void sendAckNak(meshtastic_Routing_Error err, NodeNum to, PacketId idFrom, ChannelIndex chIndex,
+                    uint8_t hopLimit = 0);
 
-  private:
+private:
     /**
      * Called from loop()
      * Handle any packet that is received by an interface on this node.

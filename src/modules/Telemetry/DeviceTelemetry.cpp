@@ -187,7 +187,10 @@ bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
                  telemetry.variant.local_stats.uptime_seconds);
     }
 
+    DEBUG_HEAP_BEFORE;
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
+    DEBUG_HEAP_AFTER("DeviceTelemetryModule::sendTelemetry", p);
+
     p->to = dest;
     if (isBroadcast(dest)) {
         p->hop_limit = customSettings.hops.hopsDeviceTelemetry;

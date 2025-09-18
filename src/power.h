@@ -84,19 +84,18 @@ extern NullSensor ina3221Sensor;
 extern MySlavePowerSensor mySlavePowerSensor;
 #endif
 
-#endif
-
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_STM32WL)
 #include "modules/Telemetry/Sensor/MAX17048Sensor.h"
 extern MAX17048Sensor max17048Sensor;
 #else
 extern NullSensor max17048Sensor;
 #endif
-#endif
 
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && HAS_RAKPROT
 #include "modules/Telemetry/Sensor/RAK9154Sensor.h"
 extern RAK9154Sensor rak9154Sensor;
+#endif
+
 #endif
 
 #ifdef HAS_PMU

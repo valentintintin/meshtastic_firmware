@@ -5,6 +5,7 @@
 #include "MeshService.h"
 #include "NodeDB.h"
 #include "RTC.h"
+
 #include "configuration.h"
 #include "detect/LoRaRadioType.h"
 #include "main.h"
@@ -29,14 +30,24 @@
 
 // I think this is right, one packet for each of the three fifos + one packet being currently assembled for TX or RX
 // And every TX packet might have a retransmission packet or an ack alive at any moment
+
+#ifdef ARCH_PORTDUINO
+// Portduino (native) targets can use dynamic memory pools with runtime-configurable sizes
 #define MAX_PACKETS                                                                                                              \
     (MAX_RX_TOPHONE + MAX_RX_FROMRADIO + 2 * MAX_TX_QUEUE +                                                                      \
      2) // max number of packets which can be in flight (either queued from reception or queued for sending)
 
-// static MemoryPool<MeshPacket> staticPool(MAX_PACKETS);
-static MemoryDynamic<meshtastic_MeshPacket> staticPool;
+static MemoryDynamic<meshtastic_MeshPacket> dynamicPool;
+Allocator<meshtastic_MeshPacket> &packetPool = dynamicPool;
+#else
+// Embedded targets use static memory pools with compile-time constants
+#define MAX_PACKETS_STATIC                                                                                                       \
+    (MAX_RX_TOPHONE + MAX_RX_FROMRADIO + 2 * MAX_TX_QUEUE +                                                                      \
+     2) // max number of packets which can be in flight (either queued from reception or queued for sending)
 
+static MemoryPool<meshtastic_MeshPacket, MAX_PACKETS_STATIC> staticPool;
 Allocator<meshtastic_MeshPacket> &packetPool = staticPool;
+#endif
 
 static uint8_t bytes[MAX_LORA_PAYLOAD_LEN + 1] __attribute__((__aligned__));
 
@@ -333,7 +344,10 @@ ErrorCode Router::send(meshtastic_MeshPacket *p)
     // If the packet is not yet encrypted, do so now
     if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag) {
         ChannelIndex chIndex = p->channel; // keep as a local because we are about to change it
+
+        DEBUG_HEAP_BEFORE;
         meshtastic_MeshPacket *p_decoded = packetPool.allocCopy(*p);
+        DEBUG_HEAP_AFTER("Router::send", p_decoded);
 
         auto encodeResult = perhapsEncode(p);
         if (encodeResult != meshtastic_Routing_Error_NONE) {
@@ -666,7 +680,9 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
     // Also, we should set the time from the ISR and it should have msec level resolution
     p->rx_time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet)); // store the arrival timestamp for the phone
     // Store a copy of encrypted packet for MQTT
+    DEBUG_HEAP_BEFORE;
     meshtastic_MeshPacket *p_encrypted = packetPool.allocCopy(*p);
+    DEBUG_HEAP_AFTER("Router::handleReceived", p_encrypted);
 
     // Take those raw bytes and convert them back into a well structured protobuf we can understand
     auto decodedState = perhapsDecode(p);
@@ -686,8 +702,9 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
 
         // Neighbor info module is disabled, ignore expensive neighbor info packets
         if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
-            p->decoded.portnum == meshtastic_PortNum_NEIGHBORINFO_APP) {
-            LOG_DEBUG("Ignore neighbor packet");
+            p->decoded.portnum == meshtastic_PortNum_NEIGHBORINFO_APP &&
+            (!moduleConfig.has_neighbor_info || !moduleConfig.neighbor_info.enabled)) {
+            LOG_DEBUG("Neighbor info module is disabled, ignore neighbor packet");
             cancelSending(p->from, p->id);
             // skipHandle = true; // We want it on MQTT
         }
@@ -712,6 +729,7 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
     }
 
     // call modules here
+    // If this could be a spoofed packet, don't let the modules see it.
     if (!skipHandle) {
         if (decodedState == DECODE_SUCCESS && customSettings.useFiltering) {
             addNewPacketReceivedTimingForNodeAndPortNum(p->from, p->decoded.portnum);
