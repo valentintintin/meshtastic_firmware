@@ -106,6 +106,8 @@ class RadioLibInterface : public RadioInterface, protected concurrency::Notified
      */
     uint32_t rxBad = 0, rxGood = 0, txGood = 0, txRelay = 0;
 
+    uint8_t lastPower = 0;
+
   public:
     RadioLibInterface(LockingArduinoHal *hal, RADIOLIB_PIN_TYPE cs, RADIOLIB_PIN_TYPE irq, RADIOLIB_PIN_TYPE rst,
                       RADIOLIB_PIN_TYPE busy, PhysicalLayer *iface = NULL);

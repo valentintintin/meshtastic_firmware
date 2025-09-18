@@ -45,7 +45,7 @@ NeighborInfoModule::NeighborInfoModule()
     if (moduleConfig.neighbor_info.enabled) {
         isPromiscuous = true; // Update neighbors from all packets
         setIntervalFromNow(Default::getConfiguredOrDefaultMs(moduleConfig.neighbor_info.update_interval,
-                                                             default_telemetry_broadcast_interval_secs));
+                                                             default_neighbor_info_broadcast_secs));
     } else {
         LOG_DEBUG("NeighborInfoModule is disabled");
         disable();
@@ -63,7 +63,7 @@ uint32_t NeighborInfoModule::collectNeighborInfo(meshtastic_NeighborInfo *neighb
     neighborInfo->node_id = my_node_id;
     neighborInfo->last_sent_by_id = my_node_id;
     neighborInfo->node_broadcast_interval_secs =
-        Default::getConfiguredOrDefault(moduleConfig.neighbor_info.update_interval, default_telemetry_broadcast_interval_secs);
+        Default::getConfiguredOrDefault(moduleConfig.neighbor_info.update_interval, default_neighbor_info_broadcast_secs);
 
     cleanUpNeighbors();
 
@@ -111,6 +111,9 @@ void NeighborInfoModule::sendNeighborInfo(NodeNum dest, bool wantReplies)
         p->to = dest;
         p->decoded.want_response = wantReplies;
         p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
+        if (isBroadcast(dest)) {
+            p->hop_limit = customSettings.hops.hopsNeighbor;
+        }
         printNeighborInfo("SENDING", &neighborInfo);
         service->sendToMesh(p, RX_SRC_LOCAL, true);
     }
@@ -122,9 +125,15 @@ Will be used for broadcast.
 */
 int32_t NeighborInfoModule::runOnce()
 {
-    if (moduleConfig.neighbor_info.transmit_over_lora &&
-        (!channels.isDefaultChannel(channels.getPrimaryIndex()) || !RadioInterface::uses_default_frequency_slot) &&
-        airTime->isTxAllowedChannelUtil(true) && airTime->isTxAllowedAirUtil()) {
+    const bool isImpoliteRole =
+        IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
+
+    const bool transmitOverLora = moduleConfig.neighbor_info.transmit_over_lora
+    || !HAS_NETWORKING
+    || !config.has_network || !moduleConfig.has_mqtt;
+
+    if (transmitOverLora &&
+        airTime->isTxAllowedChannelUtil(!isImpoliteRole) && airTime->isTxAllowedAirUtil(!isImpoliteRole)) {
         sendNeighborInfo(NODENUM_BROADCAST, false);
     } else {
         sendNeighborInfo(NODENUM_BROADCAST_NO_LORA, false);

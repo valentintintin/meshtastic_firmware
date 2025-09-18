@@ -10,6 +10,7 @@
 #include "MeshTypes.h"
 #include "NodeStatus.h"
 #include "configuration.h"
+#include "CustomSettings.h"
 #include "mesh-pb-constants.h"
 #include "mesh/generated/meshtastic/mesh.pb.h" // For CriticalErrorCode
 
@@ -80,6 +81,7 @@ DeviceState versions used to be defined in the .proto file but really only this 
 #define SEGMENT_DEVICESTATE 4
 #define SEGMENT_CHANNELS 8
 #define SEGMENT_NODEDATABASE 16
+#define SEGMENT_CUSTOM_SETTINGS 32
 
 #define DEVICESTATE_CUR_VER 24
 #define DEVICESTATE_MIN_VER 24
@@ -93,6 +95,7 @@ extern meshtastic_DeviceUIConfig uiconfig;
 extern meshtastic_LocalModuleConfig moduleConfig;
 extern meshtastic_User &owner;
 extern meshtastic_Position localPosition;
+extern CustomSettings customSettings;
 
 static constexpr const char *deviceStateFileName = "/prefs/device.proto";
 static constexpr const char *legacyPrefFileName = "/prefs/db.proto";
@@ -102,6 +105,7 @@ static constexpr const char *uiconfigFileName = "/prefs/uiconfig.proto";
 static constexpr const char *moduleConfigFileName = "/prefs/module.proto";
 static constexpr const char *channelFileName = "/prefs/channels.proto";
 static constexpr const char *backupFileName = "/backups/backup.proto";
+static constexpr const char *customSettingsFileName = "/prefs/customSetting.bin";
 
 /// Given a node, return how many seconds in the past (vs now) that we last heard from it
 uint32_t sinceLastSeen(const meshtastic_NodeInfoLite *n);
@@ -150,7 +154,7 @@ class NodeDB
     /// write to flash
     /// @return true if the save was successful
     bool saveToDisk(int saveWhat = SEGMENT_CONFIG | SEGMENT_MODULECONFIG | SEGMENT_DEVICESTATE | SEGMENT_CHANNELS |
-                                   SEGMENT_NODEDATABASE);
+                                   SEGMENT_NODEDATABASE | SEGMENT_CUSTOM_SETTINGS);
 
     /** Reinit radio config if needed, because either:
      * a) sometimes a buggy android app might send us bogus settings or
@@ -223,6 +227,9 @@ class NodeDB
                              void *dest_struct);
     bool saveProto(const char *filename, size_t protoSize, const pb_msgdesc_t *fields, const void *dest_struct,
                    bool fullAtomic = true);
+
+    LoadFileResult loadCustomSettings();
+    bool saveCustomSettingsToDisk();
 
     void installRoleDefaults(meshtastic_Config_DeviceConfig_Role role);
 

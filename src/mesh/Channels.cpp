@@ -198,6 +198,63 @@ void Channels::initDefaultChannel(ChannelIndex chIndex)
         channelSettings.downlink_enabled = USERPREFS_CHANNEL_2_DOWNLINK_ENABLED;
 #endif
         break;
+    case 3:
+#ifdef USERPREFS_CHANNEL_3_PSK
+        static const uint8_t defaultpsk3[] = USERPREFS_CHANNEL_3_PSK;
+        memcpy(channelSettings.psk.bytes, defaultpsk3, sizeof(defaultpsk3));
+        channelSettings.psk.size = sizeof(defaultpsk3);
+#endif
+#ifdef USERPREFS_CHANNEL_3_NAME
+        strcpy(channelSettings.name, (const char *)USERPREFS_CHANNEL_3_NAME);
+#endif
+#ifdef USERPREFS_CHANNEL_3_PRECISION
+        channelSettings.module_settings.position_precision = USERPREFS_CHANNEL_3_PRECISION;
+#endif
+#ifdef USERPREFS_CHANNEL_3_UPLINK_ENABLED
+        channelSettings.uplink_enabled = USERPREFS_CHANNEL_3_UPLINK_ENABLED;
+#endif
+#ifdef USERPREFS_CHANNEL_3_DOWNLINK_ENABLED
+        channelSettings.downlink_enabled = USERPREFS_CHANNEL_3_DOWNLINK_ENABLED;
+#endif
+        break;
+    case 4:
+#ifdef USERPREFS_CHANNEL_4_PSK
+        static const uint8_t defaultpsk4[] = USERPREFS_CHANNEL_4_PSK;
+        memcpy(channelSettings.psk.bytes, defaultpsk4, sizeof(defaultpsk4));
+        channelSettings.psk.size = sizeof(defaultpsk4);
+#endif
+#ifdef USERPREFS_CHANNEL_4_NAME
+        strcpy(channelSettings.name, (const char *)USERPREFS_CHANNEL_4_NAME);
+#endif
+#ifdef USERPREFS_CHANNEL_4_PRECISION
+        channelSettings.module_settings.position_precision = USERPREFS_CHANNEL_4_PRECISION;
+#endif
+#ifdef USERPREFS_CHANNEL_4_UPLINK_ENABLED
+        channelSettings.uplink_enabled = USERPREFS_CHANNEL_4_UPLINK_ENABLED;
+#endif
+#ifdef USERPREFS_CHANNEL_4_DOWNLINK_ENABLED
+        channelSettings.downlink_enabled = USERPREFS_CHANNEL_4_DOWNLINK_ENABLED;
+#endif
+        break;
+    case 5:
+#ifdef USERPREFS_CHANNEL_5_PSK
+        static const uint8_t defaultpsk5[] = USERPREFS_CHANNEL_5_PSK;
+        memcpy(channelSettings.psk.bytes, defaultpsk5, sizeof(defaultpsk5));
+        channelSettings.psk.size = sizeof(defaultpsk5);
+#endif
+#ifdef USERPREFS_CHANNEL_5_NAME
+        strcpy(channelSettings.name, (const char *)USERPREFS_CHANNEL_5_NAME);
+#endif
+#ifdef USERPREFS_CHANNEL_5_PRECISION
+        channelSettings.module_settings.position_precision = USERPREFS_CHANNEL_5_PRECISION;
+#endif
+#ifdef USERPREFS_CHANNEL_5_UPLINK_ENABLED
+        channelSettings.uplink_enabled = USERPREFS_CHANNEL_5_UPLINK_ENABLED;
+#endif
+#ifdef USERPREFS_CHANNEL_5_DOWNLINK_ENABLED
+        channelSettings.downlink_enabled = USERPREFS_CHANNEL_5_DOWNLINK_ENABLED;
+#endif
+        break;
     default:
         break;
     }

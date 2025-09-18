@@ -106,6 +106,10 @@ INA3221Sensor ina3221Sensor;
 NullSensor ina3221Sensor;
 #endif
 
+#ifdef HAS_SLAVE_SENSOR
+MySlavePowerSensor mySlavePowerSensor;
+#endif
+
 #endif
 
 #if !MESHTASTIC_EXCLUDE_I2C
@@ -297,6 +301,12 @@ class AnalogBatteryLevel : public HasBatteryLevel
         if (hasINA()) {
             return getINAVoltage();
         }
+
+#ifdef HAS_SLAVE_SENSOR
+        if (mySlavePowerSensor.isInitialized()) {
+            return mySlavePowerSensor.getBusVoltageMv();
+        }
+#endif
 #endif
 
 #ifndef ADC_MULTIPLIER
@@ -664,6 +674,9 @@ bool Power::analogInit()
     batteryLevel = &analogLevel;
     return true;
 #else
+    // TODO Voir si batteryPin toujours utile
+    // batteryLevel = &analogLevel;
+    // return true;
     return false;
 #endif
 }

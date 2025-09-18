@@ -198,11 +198,23 @@ T1000xSensor t1000xSensor;
 IndicatorSensor indicatorSensor;
 #endif
 
+#ifdef HAS_SLAVE_SENSOR
+#include "Sensor/MySlaveSensors/MySlaveEnvironmentSensor.h"
+MySlaveEnvironmentSensor mySlaveEnvironmentSensor;
+#endif
+
+#ifdef HAS_ANEMOMETER
+#include "Sensor/Anemometer.h"
+Anemometer anemometer;
+#endif
+
 #define FAILED_STATE_SENSOR_READ_MULTIPLIER 10
 #define DISPLAY_RECEIVEID_MEASUREMENTS_ON_SCREEN true
 
 #include "graphics/ScreenFonts.h"
 #include <Throttle.h>
+
+EnvironmentTelemetryModule* environmentTelemetryModule;
 
 int32_t EnvironmentTelemetryModule::runOnce()
 {
@@ -308,6 +320,14 @@ int32_t EnvironmentTelemetryModule::runOnce()
             if (rak12035Sensor.hasSensor()) {
                 result = rak12035Sensor.runOnce();
             }
+#endif
+#ifdef HAS_SLAVE_SENSOR
+            if (mySlaveEnvironmentSensor.hasSensor())
+                result = mySlaveEnvironmentSensor.runOnce();
+#endif
+#ifdef HAS_ANEMOMETER
+            if (anemometer.hasSensor())
+                result = anemometer.runOnce();
 #endif
 #endif
         }
@@ -686,6 +706,18 @@ bool EnvironmentTelemetryModule::getEnvironmentTelemetry(meshtastic_Telemetry *m
         hasSensor = true;
     }
 #endif
+#ifdef HAS_SLAVE_SENSOR
+    if (mySlaveEnvironmentSensor.hasSensor()) {
+        valid = valid && mySlaveEnvironmentSensor.getMetrics(m);
+        hasSensor = true;
+    }
+#endif
+#ifdef HAS_ANEMOMETER
+    if (anemometer.hasSensor()) {
+        valid = valid && anemometer.getMetrics(m);
+        hasSensor = true;
+    }
+#endif
 #endif
     return valid && hasSensor;
 }
@@ -747,6 +779,9 @@ bool EnvironmentTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 
         meshtastic_MeshPacket *p = allocDataProtobuf(m);
         p->to = dest;
+        if (isBroadcast(dest)) {
+            p->hop_limit = customSettings.hops.hopsEnvironmentTelemetry;
+        }
         p->decoded.want_response = false;
         if (config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR)
             p->priority = meshtastic_MeshPacket_Priority_RELIABLE;
@@ -919,6 +954,13 @@ AdminMessageHandleResult EnvironmentTelemetryModule::handleAdminMessageForModule
                       1 // Not really needed, but may as well just skip it at a lower level if no library or not a RAK_4631
     if (rak12035Sensor.hasSensor()) {
         result = rak12035Sensor.handleAdminMessage(mp, request, response);
+        if (result != AdminMessageHandleResult::NOT_HANDLED)
+            return result;
+    }
+#endif
+#ifdef HAS_SLAVE_SENSOR
+    if (mySlaveEnvironmentSensor.hasSensor()) {
+        result = mySlaveEnvironmentSensor.handleAdminMessage(mp, request, response);
         if (result != AdminMessageHandleResult::NOT_HANDLED)
             return result;
     }

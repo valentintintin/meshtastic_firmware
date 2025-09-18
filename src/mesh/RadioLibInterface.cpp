@@ -512,6 +512,25 @@ bool RadioLibInterface::startSend(meshtastic_MeshPacket *txp)
 
         size_t numbytes = beginSending(txp);
 
+        if (config.device.role == meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN && customSettings.clientHidden.enabled && customSettings.clientHidden.changePower) {
+            int8_t power = config.lora.tx_power;
+
+            if (!isFromUs(txp) && !isFromAdmin(txp)) {
+                LOG_INFO("CLIENT_HIDDEN and not from admin or us so TX with low power");
+                power = 7; // 5 mW
+            }
+
+            if (lastPower != power) {
+                LOG_INFO("setOutputPower %d", power);
+
+                const auto err = iface->setOutputPower(power);
+                if (err != RADIOLIB_ERR_NONE)
+                    LOG_ERROR("setOutputPower %s%d", radioLibErr, err);
+                else
+                    lastPower = power;
+            }
+        }
+
         int res = iface->startTransmit((uint8_t *)&radioBuffer, numbytes);
         if (res != RADIOLIB_ERR_NONE) {
             LOG_ERROR("startTransmit failed, error=%d", res);

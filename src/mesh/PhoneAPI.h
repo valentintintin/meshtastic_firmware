@@ -129,6 +129,16 @@ class PhoneAPI
 
     bool isConnected() { return state != STATE_SEND_NOTHING; }
 
+    void setAsConnected(const bool connected) {
+        if (connected) {
+            state = STATE_SEND_PACKETS;
+            lastContactMsec = millis();
+        } else {
+            state = STATE_SEND_NOTHING;
+            lastContactMsec = 0;
+        }
+    }
+
   protected:
     /// Our fromradio packet while it is being assembled
     meshtastic_FromRadio fromRadioScratch = {};

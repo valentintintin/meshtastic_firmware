@@ -103,6 +103,10 @@
 #include "modules/DropzoneModule.h"
 #endif
 
+#if !MESHTASTIC_EXCLUDE_TEXTCOMMAND
+#include "TextCommandModule.h"
+#endif
+
 /**
  * Create module instances here.  If you are adding a new module, you must 'new' it here (or somewhere else)
  */
@@ -162,7 +166,9 @@ void setupModules()
         new PowerStressModule();
 #endif
         // Example: Put your module here
-        // new ReplyModule();
+#if !MESHTASTIC_EXCLUDE_TEXTCOMMAND
+         textCommandModule = new TextCommandModule();
+#endif
 #if (HAS_BUTTON || ARCH_PORTDUINO) && !MESHTASTIC_EXCLUDE_INPUTBROKER
         if (config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR) {
             rotaryEncoderInterruptImpl1 = new RotaryEncoderInterruptImpl1();
@@ -225,11 +231,11 @@ void setupModules()
         new HostMetricsModule();
 #endif
 #if HAS_TELEMETRY
-        new DeviceTelemetryModule();
+        deviceTelemetryModule = new DeviceTelemetryModule();
 #endif
 // TODO: How to improve this?
 #if HAS_SENSOR && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-        new EnvironmentTelemetryModule();
+        environmentTelemetryModule = new EnvironmentTelemetryModule();
 #if __has_include("Adafruit_PM25AQI.h")
         if (nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_PMSA003I].first > 0) {
             new AirQualityTelemetryModule();
@@ -243,7 +249,7 @@ void setupModules()
 #endif
 #endif
 #if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_POWER_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-        new PowerTelemetryModule();
+        powerTelemetryModule = new PowerTelemetryModule();
 #endif
 #if (defined(ARCH_ESP32) || defined(ARCH_NRF52) || defined(ARCH_RP2040) || defined(ARCH_STM32WL)) &&                             \
     !defined(CONFIG_IDF_TARGET_ESP32S2) && !defined(CONFIG_IDF_TARGET_ESP32C3)
@@ -278,7 +284,7 @@ void setupModules()
         adminModule = new AdminModule();
 #endif
 #if HAS_TELEMETRY
-        new DeviceTelemetryModule();
+        deviceTelemetryModule = new DeviceTelemetryModule();
 #endif
 #if !MESHTASTIC_EXCLUDE_TRACEROUTE
         traceRouteModule = new TraceRouteModule();

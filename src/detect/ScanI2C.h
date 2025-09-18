@@ -80,7 +80,9 @@ class ScanI2C
         LTR553ALS,
         BHI260AP,
         BMM150,
-        DRV2605
+        DRV2605,
+        MY_SLAVE_SENSOR,
+        ANEMOMETER
     } DeviceType;
 
     // typedef uint8_t DeviceAddress;

@@ -79,10 +79,14 @@ extern INA3221Sensor ina3221Sensor;
 extern NullSensor ina3221Sensor;
 #endif
 
+#ifdef HAS_SLAVE_SENSOR
+#include "modules/Telemetry/Sensor/MySlaveSensors/MySlavePowerSensor.h"
+extern MySlavePowerSensor mySlavePowerSensor;
 #endif
 
-#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR
-#if __has_include(<Adafruit_MAX1704X.h>)
+#endif
+
+#if HAS_TELEMETRY && !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR && !defined(ARCH_STM32WL)
 #include "modules/Telemetry/Sensor/MAX17048Sensor.h"
 extern MAX17048Sensor max17048Sensor;
 #else

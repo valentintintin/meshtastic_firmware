@@ -21,6 +21,11 @@ class NeighborInfoModule : public ProtobufModule<meshtastic_NeighborInfo>, priva
     /* Reset neighbor info after clearing nodeDB*/
     void resetNeighbors();
 
+    /*
+     * Send info on our node's neighbors into the mesh
+     */
+    void sendNeighborInfo(NodeNum dest = NODENUM_BROADCAST, bool wantReplies = false);
+
   protected:
     /*
      * Called to handle a particular incoming message
@@ -44,11 +49,6 @@ class NeighborInfoModule : public ProtobufModule<meshtastic_NeighborInfo>, priva
 
     // Find a neighbor in our DB, create an empty neighbor if missing
     meshtastic_Neighbor *getOrCreateNeighbor(NodeNum originalSender, NodeNum n, uint32_t node_broadcast_interval_secs, float snr);
-
-    /*
-     * Send info on our node's neighbors into the mesh
-     */
-    void sendNeighborInfo(NodeNum dest = NODENUM_BROADCAST, bool wantReplies = false);
 
     /* update neighbors with subpacket sniffed from network */
     void updateNeighbors(const meshtastic_MeshPacket &mp, const meshtastic_NeighborInfo *np);

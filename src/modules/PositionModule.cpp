@@ -369,6 +369,10 @@ void PositionModule::sendOurPosition(NodeNum dest, bool wantReplies, uint8_t cha
         p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
     prevPacketId = p->id;
 
+    if (isBroadcast(dest)) {
+        p->hop_limit = customSettings.hops.hopsPosition;
+    }
+
     if (channel > 0)
         p->channel = channel;
 

@@ -574,6 +574,21 @@ void setup()
     LOG_INFO("Scan for i2c devices");
 #endif
 
+// TODO I2C est-ce qu'on a besoin de ça ?
+/*
+    #if defined(I2C_SDA1) && defined(ARCH_RP2040)
+        Wire1.setSDA(I2C_SDA1);
+        Wire1.setSCL(I2C_SCL1);
+        Wire1.begin();
+        i2cScanner->scanPort(ScanI2C::I2CPort::WIRE1);
+    #elif defined(I2C_SDA1) && !defined(ARCH_RP2040)
+        Wire1.begin(I2C_SDA1, I2C_SCL1);
+        i2cScanner->scanPort(ScanI2C::I2CPort::WIRE1);
+    #elif defined(NRF52840_XXAA) && (WIRE_INTERFACES_COUNT == 2)
+        i2cScanner->scanPort(ScanI2C::I2CPort::WIRE1);
+    #endif
+    */
+
 #if defined(I2C_SDA1) || (defined(NRF52840_XXAA) && (WIRE_INTERFACES_COUNT == 2))
     i2cScanner->scanPort(ScanI2C::I2CPort::WIRE1);
 #endif
@@ -704,6 +719,11 @@ void setup()
     LOG_DEBUG("acc_info = %i", acc_info.type);
 #endif
 
+#ifdef HAS_ANEMOMETER
+    nodeTelemetrySensorsMap[ScanI2C::DeviceType::ANEMOMETER].first = 1;
+#endif
+
+    scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::MY_SLAVE_SENSOR, meshtastic_TelemetrySensorType_SENSOR_UNSET);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BME_680, meshtastic_TelemetrySensorType_BME680);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BME_280, meshtastic_TelemetrySensorType_BME280);
     scannerToSensorsMap(i2cScanner, ScanI2C::DeviceType::BMP_280, meshtastic_TelemetrySensorType_BMP280);

@@ -36,6 +36,11 @@ class EnvironmentTelemetryModule : private concurrency::OSThread, public Protobu
     virtual void drawFrame(OLEDDisplay *display, OLEDDisplayUiState *state, int16_t x, int16_t y) override;
 #endif
 
+    /**
+     * Send our Telemetry into the mesh
+     */
+    bool sendTelemetry(NodeNum dest = NODENUM_BROADCAST, bool wantReplies = false);
+
   protected:
     /** Called to handle a particular incoming message
     @return true if you've guaranteed you've handled this message and no other handlers should be considered for it
@@ -47,10 +52,6 @@ class EnvironmentTelemetryModule : private concurrency::OSThread, public Protobu
     */
     bool getEnvironmentTelemetry(meshtastic_Telemetry *m);
     virtual meshtastic_MeshPacket *allocReply() override;
-    /**
-     * Send our Telemetry into the mesh
-     */
-    bool sendTelemetry(NodeNum dest = NODENUM_BROADCAST, bool wantReplies = false);
 
     virtual AdminMessageHandleResult handleAdminMessageForModule(const meshtastic_MeshPacket &mp,
                                                                  meshtastic_AdminMessage *request,
@@ -64,5 +65,7 @@ class EnvironmentTelemetryModule : private concurrency::OSThread, public Protobu
     uint32_t lastSentToPhone = 0;
     uint32_t sensor_read_error_count = 0;
 };
+
+extern EnvironmentTelemetryModule* environmentTelemetryModule;
 
 #endif

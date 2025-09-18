@@ -16,16 +16,18 @@
 
 #define MAGIC_USB_BATTERY_LEVEL 101
 
+DeviceTelemetryModule *deviceTelemetryModule;
+
 int32_t DeviceTelemetryModule::runOnce()
 {
     refreshUptime();
     bool isImpoliteRole =
-        IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER);
-    if (((lastSentToMesh == 0) ||
+        IS_ONE_OF(config.device.role, meshtastic_Config_DeviceConfig_Role_SENSOR, meshtastic_Config_DeviceConfig_Role_ROUTER, meshtastic_Config_DeviceConfig_Role_ROUTER_LATE);
+    if (customSettings.sendDeviceTelemetry && ((lastSentToMesh == 0) ||
          ((uptimeLastMs - lastSentToMesh) >=
           Default::getConfiguredOrDefaultMsScaled(moduleConfig.telemetry.device_update_interval,
                                                   default_telemetry_broadcast_interval_secs, numOnlineNodes))) &&
-        airTime->isTxAllowedChannelUtil(!isImpoliteRole) && airTime->isTxAllowedAirUtil() &&
+        airTime->isTxAllowedChannelUtil(!isImpoliteRole) && airTime->isTxAllowedAirUtil(!isImpoliteRole) &&
         config.device.role != meshtastic_Config_DeviceConfig_Role_REPEATER &&
         config.device.role != meshtastic_Config_DeviceConfig_Role_CLIENT_HIDDEN) {
         sendTelemetry();
@@ -33,7 +35,7 @@ int32_t DeviceTelemetryModule::runOnce()
     } else if (service->isToPhoneQueueEmpty()) {
         // Just send to phone when it's not our time to send to mesh yet
         // Only send while queue is empty (phone assumed connected)
-        sendTelemetry(NODENUM_BROADCAST, true);
+        sendTelemetry(NODENUM_BROADCAST_NO_LORA, true);
         if (lastSentStatsToPhone == 0 || (uptimeLastMs - lastSentStatsToPhone) >= sendStatsToPhoneIntervalMs) {
             sendLocalStatsToPhone();
             lastSentStatsToPhone = uptimeLastMs;
@@ -166,14 +168,30 @@ void DeviceTelemetryModule::sendLocalStatsToPhone()
 
 bool DeviceTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 {
-    meshtastic_Telemetry telemetry = getDeviceTelemetry();
-    LOG_INFO("Send: air_util_tx=%f, channel_utilization=%f, battery_level=%i, voltage=%f, uptime=%i",
-             telemetry.variant.device_metrics.air_util_tx, telemetry.variant.device_metrics.channel_utilization,
-             telemetry.variant.device_metrics.battery_level, telemetry.variant.device_metrics.voltage,
-             telemetry.variant.device_metrics.uptime_seconds);
+    // TODO gérer le phoneOnly ?
+    meshtastic_Telemetry telemetry = lastVariantSent == meshtastic_Telemetry_device_metrics_tag && customSettings.switchBetweenDeviceAndLocalTelemetry && isBroadcast(dest) ? getLocalStatsTelemetry() : getDeviceTelemetry();
+
+    if (isBroadcast(dest)) {
+        lastVariantSent = telemetry.which_variant;
+    }
+
+    if (telemetry.which_variant == meshtastic_Telemetry_device_metrics_tag) {
+        LOG_INFO("Send: air_util_tx=%f, channel_utilization=%f, battery_level=%i, voltage=%f, uptime=%i",
+                 telemetry.variant.device_metrics.air_util_tx, telemetry.variant.device_metrics.channel_utilization,
+                 telemetry.variant.device_metrics.battery_level, telemetry.variant.device_metrics.voltage,
+                 telemetry.variant.device_metrics.uptime_seconds);
+    } else {
+        LOG_INFO("Send: air_util_tx=%f, channel_utilization=%f, num_packet_tx=%i, num_packet_rx=%i, uptime=%i",
+                 telemetry.variant.local_stats.air_util_tx, telemetry.variant.local_stats.channel_utilization,
+                 telemetry.variant.local_stats.num_packets_tx, telemetry.variant.local_stats.num_packets_rx,
+                 telemetry.variant.local_stats.uptime_seconds);
+    }
 
     meshtastic_MeshPacket *p = allocDataProtobuf(telemetry);
     p->to = dest;
+    if (isBroadcast(dest)) {
+        p->hop_limit = customSettings.hops.hopsDeviceTelemetry;
+    }
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 

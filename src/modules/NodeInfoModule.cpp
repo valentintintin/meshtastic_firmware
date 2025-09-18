@@ -47,6 +47,9 @@ void NodeInfoModule::sendOurNodeInfo(NodeNum dest, bool wantReplies, uint8_t cha
     meshtastic_MeshPacket *p = allocReply();
     if (p) { // Check whether we didn't ignore it
         p->to = dest;
+        if (isBroadcast(dest)) {
+            p->hop_limit = customSettings.hops.hopsNodeInfo;
+        }
         p->decoded.want_response = (config.device.role != meshtastic_Config_DeviceConfig_Role_TRACKER &&
                                     config.device.role != meshtastic_Config_DeviceConfig_Role_SENSOR) &&
                                    wantReplies;

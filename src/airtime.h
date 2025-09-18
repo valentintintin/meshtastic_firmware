@@ -60,7 +60,7 @@ class AirTime : private concurrency::OSThread
     uint32_t *airtimeReport(reportTypes reportType);
     uint8_t getSilentMinutes(float txPercent, float dutyCycle);
     bool isTxAllowedChannelUtil(bool polite = false);
-    bool isTxAllowedAirUtil();
+    bool isTxAllowedAirUtil(bool polite = true);
 
   private:
     bool firstTime = true;

@@ -14,6 +14,8 @@
 #if !MESHTASTIC_EXCLUDE_MQTT
 #include "mqtt/MQTT.h"
 #endif
+#include <Throttle.h>
+
 #include "Default.h"
 #if ARCH_PORTDUINO
 #include "platform/portduino/PortduinoGlue.h"
@@ -207,6 +209,62 @@ ErrorCode Router::rawSend(meshtastic_MeshPacket *p)
     return iface->send(p);
 }
 
+PacketReceivedTiming* Router::getLastPacketReceivedTimingByNodeAndPortNum(const uint32_t nodeNum, const meshtastic_PortNum portNum) {
+    for (uint16_t i = 0; i < numPacketReceivedTimings; i++) {
+        const auto packet = &lastPacketReceivedTimingForNodeAndPortNum.at(i);
+        if (packet->nodeNum == nodeNum && packet->portNum == portNum) {
+            return packet;
+        }
+    }
+
+    return nullptr;
+}
+
+PacketReceivedTiming* Router::addNewPacketReceivedTimingForNodeAndPortNum(const uint32_t nodeNum, const meshtastic_PortNum portNum) {
+    if (!IS_ONE_OF(portNum, PORTSNUM_TO_SAVE_RECEIVED_TIMING)) {
+        return nullptr;
+    }
+
+    if (const auto packet = getLastPacketReceivedTimingByNodeAndPortNum(nodeNum, portNum)) {
+        LOG_DEBUG("Packet portnum %d sent from 0x%x at %lu ms replace old one at %lu ms", portNum, nodeNum, millis(), packet->time);
+        packet->time = millis();
+        return packet;
+    }
+
+    if (numPacketReceivedTimings >= MAX_PACKET_RECEIVED_TIMING || memGet.getFreeHeap() < MINIMUM_SAFE_FREE_HEAP) {
+        uint32_t oldest = UINT32_MAX;
+        int oldestIndex = -1;
+
+        for (int i = 1; i < numPacketReceivedTimings; i++) {
+            // Simply the oldest packets
+            if (lastPacketReceivedTimingForNodeAndPortNum.at(i).time < oldest) {
+                oldest = lastPacketReceivedTimingForNodeAndPortNum.at(i).time;
+                oldestIndex = i;
+            }
+        }
+
+        if (oldestIndex != -1) {
+            LOG_DEBUG("Packet portnum %d sent from 0x%x at %lu ms is too old so removed", portNum, nodeNum, lastPacketReceivedTimingForNodeAndPortNum.at(oldestIndex).time);
+
+            // Shove the remaining packets down the chain
+            for (int i = oldestIndex; i < numPacketReceivedTimings - 1; i++) {
+                lastPacketReceivedTimingForNodeAndPortNum.at(i) = lastPacketReceivedTimingForNodeAndPortNum.at(i + 1);
+            }
+            numPacketReceivedTimings--;
+        }
+    }
+
+    // add the packet at the end
+    const auto packet = &lastPacketReceivedTimingForNodeAndPortNum.at(numPacketReceivedTimings++);
+    packet->nodeNum = nodeNum;
+    packet->portNum = portNum;
+    packet->time = millis();
+
+    LOG_DEBUG("Packet portnum %d sent from 0x%x at %lu ms added", portNum, nodeNum, millis());
+
+    return packet;
+}
+
 /**
  * Send a packet on a suitable interface.  This routine will
  * later free() the packet to pool.  This routine is not allowed to stall.
@@ -232,7 +290,7 @@ ErrorCode Router::send(meshtastic_MeshPacket *p)
             cn->has_reply_id = true;
             cn->reply_id = p->id;
             cn->level = meshtastic_LogRecord_Level_WARNING;
-            cn->time = getValidTime(RTCQualityFromNet);
+            cn->time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet));
             sprintf(cn->message, "Duty cycle limit exceeded. You can send again in %d mins", silentMinutes);
             service->sendClientNotification(cn);
 
@@ -606,7 +664,7 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
 {
     bool skipHandle = false;
     // Also, we should set the time from the ISR and it should have msec level resolution
-    p->rx_time = getValidTime(RTCQualityFromNet); // store the arrival timestamp for the phone
+    p->rx_time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet)); // store the arrival timestamp for the phone
     // Store a copy of encrypted packet for MQTT
     meshtastic_MeshPacket *p_encrypted = packetPool.allocCopy(*p);
 
@@ -628,11 +686,10 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
 
         // Neighbor info module is disabled, ignore expensive neighbor info packets
         if (p->which_payload_variant == meshtastic_MeshPacket_decoded_tag &&
-            p->decoded.portnum == meshtastic_PortNum_NEIGHBORINFO_APP &&
-            (!moduleConfig.has_neighbor_info || !moduleConfig.neighbor_info.enabled)) {
-            LOG_DEBUG("Neighbor info module is disabled, ignore neighbor packet");
+            p->decoded.portnum == meshtastic_PortNum_NEIGHBORINFO_APP) {
+            LOG_DEBUG("Ignore neighbor packet");
             cancelSending(p->from, p->id);
-            skipHandle = true;
+            // skipHandle = true; // We want it on MQTT
         }
 
         bool shouldIgnoreNonstandardPorts =
@@ -648,15 +705,18 @@ void Router::handleReceived(meshtastic_MeshPacket *p, RxSource src)
                        meshtastic_PortNum_STORE_FORWARD_APP, meshtastic_PortNum_TRACEROUTE_APP)) {
             LOG_DEBUG("Ignore packet on non-standard portnum for CORE_PORTNUMS_ONLY");
             cancelSending(p->from, p->id);
-            skipHandle = true;
+            // skipHandle = true; // We want it on MQTT
         }
     } else {
         printPacket("packet decoding failed or skipped (no PSK?)", p);
     }
 
     // call modules here
-    // If this could be a spoofed packet, don't let the modules see it.
-    if (!skipHandle && p->from != nodeDB->getNodeNum()) {
+    if (!skipHandle) {
+        if (decodedState == DECODE_SUCCESS && customSettings.useFiltering) {
+            addNewPacketReceivedTimingForNodeAndPortNum(p->from, p->decoded.portnum);
+        }
+
         MeshModule::callModules(*p, src);
 
 #if !MESHTASTIC_EXCLUDE_MQTT
@@ -681,12 +741,12 @@ void Router::perhapsHandleReceived(meshtastic_MeshPacket *p)
 {
 #if ENABLE_JSON_LOGGING
     // Even ignored packets get logged in the trace
-    p->rx_time = getValidTime(RTCQualityFromNet); // store the arrival timestamp for the phone
+    p->rx_time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet)); // store the arrival timestamp for the phone
     LOG_TRACE("%s", MeshPacketSerializer::JsonSerializeEncrypted(p).c_str());
 #elif ARCH_PORTDUINO
     // Even ignored packets get logged in the trace
     if (settingsStrings[traceFilename] != "" || settingsMap[logoutputlevel] == level_trace) {
-        p->rx_time = getValidTime(RTCQualityFromNet); // store the arrival timestamp for the phone
+        p->rx_time = getValidTime(IF_ROUTER(RTCQualityDevice, RTCQualityFromNet)); // store the arrival timestamp for the phone
         LOG_TRACE("%s", MeshPacketSerializer::JsonSerializeEncrypted(p).c_str());
     }
 #endif

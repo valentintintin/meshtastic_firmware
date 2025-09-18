@@ -22,6 +22,8 @@
 #include "graphics/ScreenFonts.h"
 #include <Throttle.h>
 
+PowerTelemetryModule *powerTelemetryModule;
+
 namespace graphics
 {
 extern void drawCommonHeader(OLEDDisplay *display, int16_t x, int16_t y, const char *titleStr, bool battery_only);
@@ -74,6 +76,10 @@ int32_t PowerTelemetryModule::runOnce()
                 result = ina3221Sensor.isInitialized() ? 0 : ina3221Sensor.runOnce();
             if (max17048Sensor.hasSensor())
                 result = max17048Sensor.isInitialized() ? 0 : max17048Sensor.runOnce();
+#ifdef HAS_SLAVE_SENSOR
+            if (mySlavePowerSensor.hasSensor())
+                result = mySlavePowerSensor.isInitialized() ? 0 : mySlavePowerSensor.runOnce();
+#endif
         }
 
         // it's possible to have this module enabled, only for displaying values on the screen.
@@ -205,6 +211,10 @@ bool PowerTelemetryModule::getPowerTelemetry(meshtastic_Telemetry *m)
         valid = ina3221Sensor.getMetrics(m);
     if (max17048Sensor.hasSensor())
         valid = max17048Sensor.getMetrics(m);
+#ifdef HAS_SLAVE_SENSOR
+    if (mySlavePowerSensor.hasSensor())
+        valid = mySlavePowerSensor.getMetrics(m);
+#endif
 #endif
 
     return valid;
@@ -254,6 +264,9 @@ bool PowerTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 
         meshtastic_MeshPacket *p = allocDataProtobuf(m);
         p->to = dest;
+        if (isBroadcast(dest)) {
+            p->hop_limit = customSettings.hops.hopsPowerTelemetry;
+        }
         p->decoded.want_response = false;
         if (config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR)
             p->priority = meshtastic_MeshPacket_Priority_RELIABLE;

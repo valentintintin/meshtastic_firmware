@@ -189,6 +189,8 @@ meshtastic_CriticalErrorCode error_code =
     meshtastic_CriticalErrorCode_NONE; // For the error code, only show values from this boot (discard value from flash)
 uint32_t error_address = 0;
 
+CustomSettings customSettings;
+
 static uint8_t ourMacAddr[6];
 
 NodeDB::NodeDB()
@@ -291,6 +293,20 @@ NodeDB::NodeDB()
         memcpy(owner.public_key.bytes, config.security.public_key.bytes, config.security.public_key.size);
         crypto->setDHPrivateKey(config.security.private_key.bytes);
     }
+
+#ifdef OVERRIDE_PUBLIC_KEY
+    const pb_byte_t pk[32] = OVERRIDE_PUBLIC_KEY;
+    memcpy(owner.public_key.bytes, pk, 32);
+    memcpy(config.security.public_key.bytes, pk, 32);
+    LOG_WARN("Override of the public key");
+#endif
+
+#ifdef OVERRIDE_PRIVATE_KEY
+    const pb_byte_t pvk[32] = OVERRIDE_PRIVATE_KEY;
+    memcpy(config.security.private_key.bytes, pvk, 32);
+    LOG_WARN("Override of the private key");
+#endif
+
 #endif
     // Include our owner in the node db under our nodenum
     meshtastic_NodeInfoLite *info = getOrCreateMeshNode(getNodeNum());
@@ -458,6 +474,15 @@ bool isBroadcast(uint32_t dest)
     return dest == NODENUM_BROADCAST || dest == NODENUM_BROADCAST_NO_LORA;
 }
 
+bool isFromAdmin(const meshtastic_MeshPacket *p) {
+    return isFromUs(p) || (config.security.admin_key[0].size == 32 &&
+              memcmp(p->public_key.bytes, config.security.admin_key[0].bytes, 32) == 0) ||
+             (config.security.admin_key[1].size == 32 &&
+              memcmp(p->public_key.bytes, config.security.admin_key[1].bytes, 32) == 0) ||
+             (config.security.admin_key[2].size == 32 &&
+              memcmp(p->public_key.bytes, config.security.admin_key[2].bytes, 32) == 0);
+}
+
 void NodeDB::resetRadioConfig(bool is_fresh_install)
 {
     if (is_fresh_install) {
@@ -547,7 +572,11 @@ void NodeDB::installDefaultConfig(bool preserveKey = false)
     config.lora.tx_enabled =
         true; // FIXME: maybe false in the future, and setting region to enable it. (unset region forces it off)
     config.lora.override_duty_cycle = false;
+#ifdef USERPREFS_CONFIG_LORA_OK_TO_MQTT
+    config.lora.config_ok_to_mqtt = USERPREFS_CONFIG_LORA_OK_TO_MQTT;
+#else
     config.lora.config_ok_to_mqtt = false;
+#endif
 
 #if HAS_TFT // For the devices that support MUI, default to that
     config.display.displaymode = meshtastic_Config_DisplayConfig_DisplayMode_COLOR;
@@ -577,7 +606,11 @@ void NodeDB::installDefaultConfig(bool preserveKey = false)
 #else
     config.lora.modem_preset = meshtastic_Config_LoRaConfig_ModemPreset_LONG_FAST;
 #endif
+#ifdef USERPREFS_LORACONFIG_HOP_LIMIT
+    config.lora.hop_limit = USERPREFS_LORACONFIG_HOP_LIMIT;
+#else
     config.lora.hop_limit = HOP_RELIABLE;
+#endif
 #ifdef USERPREFS_CONFIG_LORA_IGNORE_MQTT
     config.lora.ignore_mqtt = USERPREFS_CONFIG_LORA_IGNORE_MQTT;
 #else
@@ -625,6 +658,17 @@ void NodeDB::installDefaultConfig(bool preserveKey = false)
 #ifdef PIN_GPS_EN
     config.position.gps_en_gpio = PIN_GPS_EN;
 #endif
+#ifdef GPS_POWER_TOGGLE
+    config.device.disable_triple_click = false;
+#else
+    config.device.disable_triple_click = true;
+#endif
+#ifdef USERPREFS_CONFIG_DEVICE_ROLE
+    config.device.role = USERPREFS_CONFIG_DEVICE_ROLE;
+#endif
+#ifdef USERPREFS_DEVICE_REBROADCAST_MODE
+    config.device.rebroadcast_mode = USERPREFS_DEVICE_REBROADCAST_MODE;
+#endif
 #if defined(USERPREFS_CONFIG_GPS_MODE)
     config.position.gps_mode = USERPREFS_CONFIG_GPS_MODE;
 #elif !HAS_GPS || GPS_DEFAULT_NOT_PRESENT
@@ -644,8 +688,15 @@ void NodeDB::installDefaultConfig(bool preserveKey = false)
 #endif
     config.position.broadcast_smart_minimum_distance = 100;
     config.position.broadcast_smart_minimum_interval_secs = 30;
+#ifdef USERPREFS_CONFIG_POSITION_INTERVAL
+    config.position.position_broadcast_secs = USERPREFS_CONFIG_POSITION_INTERVAL;
+#endif
+#ifdef USERPREFS_CONFIG_DEVICE_INTERVAL
+    config.device.node_info_broadcast_secs = USERPREFS_CONFIG_DEVICE_INTERVAL;
+#else
     if (config.device.role != meshtastic_Config_DeviceConfig_Role_ROUTER)
         config.device.node_info_broadcast_secs = default_node_info_broadcast_secs;
+#endif
     config.security.serial_enabled = true;
     config.security.admin_channel_enabled = false;
     resetRadioConfig(true); // This also triggers NodeInfo/Position requests since we're fresh
@@ -877,6 +928,40 @@ void NodeDB::installDefaultModuleConfig()
 
     moduleConfig.has_neighbor_info = true;
     moduleConfig.neighbor_info.enabled = false;
+#ifdef USERPREFS_NEIGHBOR_INFO_ENABLED
+    moduleConfig.neighbor_info.enabled = USERPREFS_NEIGHBOR_INFO_ENABLED;
+#ifdef USERPREFS_NEIGHBOR_INFO_INTERVAL
+    moduleConfig.neighbor_info.update_interval = USERPREFS_NEIGHBOR_INFO_INTERVAL;
+#endif
+#ifdef USERPREFS_NEIGHBOR_INFO_TRANSMIT_OVER_LORA
+    moduleConfig.neighbor_info.transmit_over_lora = USERPREFS_NEIGHBOR_INFO_TRANSMIT_OVER_LORA;
+#endif
+#endif
+
+#ifdef USERPREFS_TELEMETRY_DEVICE_INTERVAL
+    moduleConfig.telemetry.device_update_interval = USERPREFS_TELEMETRY_DEVICE_INTERVAL;
+#endif
+
+#ifdef USERPREFS_TELEMETRY_ENVIRONMENT_ENABLED
+    moduleConfig.telemetry.environment_measurement_enabled = USERPREFS_TELEMETRY_ENVIRONMENT_ENABLED;
+#ifdef USERPREFS_TELEMETRY_ENVIRONMENT_INTERVAL
+    moduleConfig.telemetry.environment_update_interval = USERPREFS_TELEMETRY_ENVIRONMENT_INTERVAL;
+#endif
+#endif
+
+#ifdef USERPREFS_TELEMETRY_AIR_QUALITY_ENABLED
+    moduleConfig.telemetry.air_quality_enabled = USERPREFS_TELEMETRY_AIR_QUALITY_ENABLED;
+#ifdef USERPREFS_TELEMETRY_AIR_QUALITY_INTERVAL
+    moduleConfig.telemetry.air_quality_interval = USERPREFS_TELEMETRY_AIR_QUALITY_INTERVAL;
+#endif
+#endif
+
+#ifdef USERPREFS_TELEMETRY_POWER_ENABLED
+    moduleConfig.telemetry.power_measurement_enabled = USERPREFS_TELEMETRY_POWER_ENABLED;
+#ifdef USERPREFS_TELEMETRY_POWER_INTERVAL
+    moduleConfig.telemetry.power_update_interval = USERPREFS_TELEMETRY_POWER_INTERVAL;
+#endif
+#endif
 
     moduleConfig.has_detection_sensor = true;
     moduleConfig.detection_sensor.enabled = false;
@@ -889,6 +974,50 @@ void NodeDB::installDefaultModuleConfig()
     moduleConfig.ambient_lighting.red = (myNodeInfo.my_node_num & 0xFF0000) >> 16;
     moduleConfig.ambient_lighting.green = (myNodeInfo.my_node_num & 0x00FF00) >> 8;
     moduleConfig.ambient_lighting.blue = myNodeInfo.my_node_num & 0x0000FF;
+
+#ifdef USERPREFS_SERIAL_ENABLED
+    moduleConfig.serial.enabled = USERPREFS_SERIAL_ENABLED;
+#endif
+#ifdef USERPREFS_SERIAL_BAUD
+    moduleConfig.serial.baud = USERPREFS_SERIAL_BAUD;
+#endif
+#ifdef USERPREFS_SERIAL_MODE
+    moduleConfig.serial.mode = USERPREFS_SERIAL_MODE;
+#endif
+#ifdef USERPREFS_SERIAL_OVERRIDE_CONSOLE
+    moduleConfig.serial.override_console_serial_port = USERPREFS_SERIAL_OVERRIDE_CONSOLE;
+#endif
+#ifdef USERPREFS_SERIAL_RXD
+    moduleConfig.serial.rxd = USERPREFS_SERIAL_RXD;
+#endif
+#ifdef USERPREFS_SERIAL_TXD
+    moduleConfig.serial.txd = USERPREFS_SERIAL_TXD;
+#endif
+
+#ifdef USERPREFS_MQTT_ENABLED
+    moduleConfig.mqtt.enabled = USERPREFS_MQTT_ENABLED;
+#endif
+
+#ifdef USERPREFS_MQTT_ENCRYPTION_ENABLED
+    moduleConfig.mqtt.encryption_enabled = USERPREFS_MQTT_ENCRYPTION_ENABLED;
+#endif
+
+#ifdef USERPREFS_MQTT_PROXY_CLIENT_ENABLED
+    moduleConfig.mqtt.proxy_to_client_enabled = USERPREFS_MQTT_PROXY_CLIENT_ENABLED;
+#endif
+
+    moduleConfig.mqtt.has_map_report_settings = true;
+#ifdef USERPREFS_MQTT_MAP_REPORTING_ENABLED
+    moduleConfig.mqtt.map_reporting_enabled = USERPREFS_MQTT_MAP_REPORTING_ENABLED;
+#endif
+
+#ifdef USERPREFS_MQTT_MAP_REPORTING_INTERVAL
+    moduleConfig.mqtt.map_report_settings.publish_interval_secs = USERPREFS_MQTT_MAP_REPORTING_INTERVAL;
+#endif
+
+#ifdef USERPREFS_MQTT_MAP_REPORTING_PRECISION
+    moduleConfig.mqtt.map_report_settings.position_precision = USERPREFS_MQTT_MAP_REPORTING_PRECISION;
+#endif
 
     initModuleConfigIntervals();
 }
@@ -1339,6 +1468,17 @@ void NodeDB::loadFromDisk()
     }
 
 #endif
+
+    state = loadCustomSettings();
+    if (state == LoadFileResult::LOAD_SUCCESS) {
+        LOG_INFO("Loaded custom settings");
+    }
+
+    if (state != LoadFileResult::LOAD_SUCCESS || customSettings.version < SETTINGS_VERSION) {
+        LOG_WARN("Settings version %d is stale or failed to load, upgrading to new default", customSettings.version);
+        customSettings = CustomSettings();
+        saveToDisk(SEGMENT_CUSTOM_SETTINGS);
+    }
 }
 
 /** Save a protobuf from a file, return true for success */
@@ -1361,6 +1501,50 @@ bool NodeDB::saveProto(const char *filename, size_t protoSize, const pb_msgdesc_
     bool writeSucceeded = f.close();
 
     if (!okay || !writeSucceeded) {
+        LOG_ERROR("Can't write prefs!");
+    }
+#else
+    LOG_ERROR("ERROR: Filesystem not implemented");
+#endif
+    return okay;
+}
+
+LoadFileResult NodeDB::loadCustomSettings() {
+    LoadFileResult state = LoadFileResult::OTHER_FAILURE;
+#ifdef FSCom
+    concurrency::LockGuard g(spiLock);
+
+    auto f = FSCom.open(customSettingsFileName, FILE_O_READ);
+
+    if (f) {
+        LOG_INFO("Load %s", customSettingsFileName);
+
+        f.read(reinterpret_cast<uint8_t *>(&customSettings), sizeof(customSettings));
+        f.close();
+
+        LOG_INFO("Loaded %s successfully", customSettingsFileName);
+        state = LoadFileResult::LOAD_SUCCESS;
+    } else {
+        LOG_ERROR("Could not open / read %s", customSettingsFileName);
+    }
+#else
+    LOG_ERROR("ERROR: Filesystem not implemented");
+    state = LoadFileResult::NO_FILESYSTEM;
+#endif
+    return state;
+}
+
+bool NodeDB::saveCustomSettingsToDisk() {
+    bool okay = false;
+#ifdef FSCom
+    auto f = SafeFile(customSettingsFileName);
+
+    LOG_INFO("Save %s", customSettingsFileName);
+
+    f.write(reinterpret_cast<const uint8_t *>(&customSettings), sizeof(customSettings));
+    okay = f.close();
+
+    if (!okay) {
         LOG_ERROR("Can't write prefs!");
     }
 #else
@@ -1452,6 +1636,10 @@ bool NodeDB::saveToDiskNoRetry(int saveWhat)
 
     if (saveWhat & SEGMENT_NODEDATABASE) {
         success &= saveNodeDatabaseToDisk();
+    }
+
+    if (saveWhat & SEGMENT_CUSTOM_SETTINGS) {
+        success &= saveCustomSettingsToDisk();
     }
 
     return success;
